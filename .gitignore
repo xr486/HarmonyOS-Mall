@@ -1,0 +1,63 @@
+# ========================
+# 项目文档（不纳入版本控制）
+# ========================
+*.docx
+*.doc
+
+# ========================
+# IDE 配置文件
+# ========================
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+
+# ========================
+# 后端 - Java/Maven (backend/)
+# ========================
+backend/target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# ========================
+# 前端 - HarmonyOS/DevEco (frontend/)
+# ========================
+# 构建产物
+frontend/entry/build/
+frontend/.hvigor/
+frontend/build/
+*.hap
+*.hsp
+*.app
+
+# 本地配置（含本地 SDK 路径，不应提交）
+frontend/local.properties
+
+# 依赖包（类似 node_modules，不应提交，通过 ohpm install 恢复）
+frontend/oh_modules/
+**/oh_modules/
+
+# 构建缓存
+.cxx/
+build/
+
+# ========================
+# 操作系统生成文件
+# ========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================
+# 日志与临时文件
+# ========================
+*.log
+*.tmp
+*.bak

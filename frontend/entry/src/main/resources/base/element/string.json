@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "鸿蒙商城主模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "鸿蒙商城入口Ability"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "鸿蒙商城"
+    },
+    {
+      "name": "location_permission_reason",
+      "value": "用于获取附近商家和商品推荐"
+    }
+  ]
+}

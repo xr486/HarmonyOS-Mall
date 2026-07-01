@@ -1,0 +1,25 @@
+
+{
+  "string": [
+    {
+      "name": "app_name",
+      "value": "HarmonyOS Mall"
+    },
+    {
+      "name": "module_desc",
+      "value": "HarmonyOS Mall Main Module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "HarmonyOS Mall Entry Ability"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "HarmonyOS Mall"
+    },
+    {
+      "name": "location_permission_reason",
+      "value": "Used to get nearby merchants and product recommendations"
+    }
+  ]
+}

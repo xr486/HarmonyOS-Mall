@@ -1,0 +1,13 @@
+{
+  "modelVersion": "6.1.1",
+  "name": "hongmen-mall",
+  "version": "1.0.0",
+  "description": "鸿蒙商城 - HarmonyOS Mall Application",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "@ohos/hypium": "1.0.12"
+  },
+  "devDependencies": {}
+}
