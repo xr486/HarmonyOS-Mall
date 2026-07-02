@@ -11,10 +11,10 @@ export struct ProductCard {
       Column() {
         LazyImage({
           src: this.product.images && this.product.images.length > 0 ? this.product.images[0] : '',
-          width: '100%',
-          height: 160,
+          imgWidth: '100%',
+          imgHeight: 160,
           objectFit: ImageFit.Cover,
-          borderRadius: { topLeft: 8, topRight: 8 },
+          imgBorderRadius: 8,
           alt: $r('app.media.app_icon')
         })
 

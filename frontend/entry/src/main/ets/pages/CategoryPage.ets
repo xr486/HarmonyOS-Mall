@@ -1,6 +1,6 @@
 import { CategoryService } from '../services/product/CategoryService';
 import { Category } from '../common/models';
-import router from '@ohos.router';
+import { router } from '@ohos.router';
 
 @Entry
 @Component
@@ -46,7 +46,7 @@ struct CategoryPage {
 
   onChildCategoryClick(category: Category): void {
     router.pushUrl({
-      url: 'pages/ProductList',
+      url: 'pages/ProductListPage',
       params: { categoryId: category.categoryId, categoryName: category.name }
     });
   }
@@ -121,50 +121,47 @@ struct CategoryPage {
           Scroll() {
             Column() {
               if (this.childCategories.length > 0) {
-                Grid() {
+                Column() {
                   ForEach(this.childCategories, (child: Category) => {
-                    GridItem() {
-                      Column() {
-                        if (child.icon) { {
-                          Image(child.icon)
-                            .width(50)
-                            .height(50)
-                            .objectFit(ImageFit.Contain)
-                            .margin({ bottom: 8 })
-                        } else {
-                          Column() {
-                            Text(child.name.charAt(0))
-                              .fontSize(24)
-                              .fontWeight(FontWeight.Bold)
-                              .fontColor('#FF4D4F')
-                          }
+                    Column() {
+                      if (child.icon) {
+                        Image(child.icon)
                           .width(50)
                           .height(50)
-                          .backgroundColor('#FFF1F0')
-                          .borderRadius(25)
-                          .justifyContent(FlexAlign.Center)
-                          .alignItems(HorizontalAlign.Center)
+                          .objectFit(ImageFit.Contain)
                           .margin({ bottom: 8 })
+                      } else {
+                        Column() {
+                          Text(child.name.charAt(0))
+                            .fontSize(24)
+                            .fontWeight(FontWeight.Bold)
+                            .fontColor('#FF4D4F')
                         }
-                        Text(child.name)
-                          .fontSize(12)
-                          .fontColor('#333')
-                          .maxLines(1)
-                          .textOverflow({ overflow: TextOverflow.Ellipsis })
+                        .width(50)
+                        .height(50)
+                        .backgroundColor('#FFF1F0')
+                        .borderRadius(25)
+                        .justifyContent(FlexAlign.Center)
+                        .alignItems(HorizontalAlign.Center)
+                        .margin({ bottom: 8 })
                       }
-                      .width('100%')
-                      .padding({ top: 16, bottom: 16 })
-                      .justifyContent(FlexAlign.Center)
-                      .alignItems(HorizontalAlign.Center)
-                      .backgroundColor(Color.White)
-                      .borderRadius(8)
-                      .onClick(() => { this.onChildCategoryClick(child); })
+                      Text(child.name)
+                        .fontSize(12)
+                        .fontColor('#333')
+                        .maxLines(1)
+                        .textOverflow({ overflow: TextOverflow.Ellipsis })
                     }
+                    .width('31%')
+                    .padding({ top: 16, bottom: 16 })
+                    .justifyContent(FlexAlign.Center)
+                    .alignItems(HorizontalAlign.Center)
+                    .backgroundColor(Color.White)
+                    .borderRadius(8)
+                    .onClick(() => { this.onChildCategoryClick(child); })
                   }, (child: Category) => child.categoryId)
                 }
-                .columnsTemplate('1fr 1fr 1fr')
-                .columnsGap(12)
-                .rowsGap(12)
+                .flexWrap(FlexWrap.Wrap)
+                .justifyContent(FlexAlign.SpaceBetween)
                 .padding(16)
                 .width('100%')
               } else {

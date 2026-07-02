@@ -2,7 +2,7 @@ import { ProductService } from '../services/product/ProductService';
 import { CategoryService } from '../services/product/CategoryService';
 import { Product, Category } from '../common/models';
 import { ProductCard } from '../components/ProductCard';
-import router from '@ohos.router';
+import { router } from '@ohos.router';
 
 type SortType = 'default' | 'price-asc' | 'price-desc' | 'sales' | 'rating';
 
@@ -143,8 +143,6 @@ struct ProductListPage {
       .width('100%')
       .padding({ left: 12, right: 12, top: 8, bottom: 8 })
       .backgroundColor('#FFFFFF')
-      .borderBottomWidth(1)
-      .borderBottomColor('#F0F0F0')
 
       if (this.isLoading) {
         Column() {
@@ -196,11 +194,6 @@ struct ProductListPage {
         .layoutWeight(1)
         .scrollBar(BarState.Off)
         .backgroundColor('#F5F5F5')
-        .onScrollEdge((side: ScrollEdge) => {
-          if (side === ScrollEdge.Top) {
-            this.loadData();
-          }
-        })
       }
     }
     .width('100%')
