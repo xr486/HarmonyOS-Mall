@@ -97,9 +97,18 @@ struct HomeTab {
         .borderRadius(20)
         .margin({ left: 12, right: 12, top: 36, bottom: 4 })
 
-      Scroll() {
-        Row({ space: 12 }) {
-          ForEach(this.categories, (cat: Category) => {
+      Row({ space: 12 }) {
+          Text('全部分类')
+            .fontSize(13)
+            .fontColor('#FF4D4F')
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+            .borderRadius(14)
+            .backgroundColor('#FFF1F0')
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/CategoryPage' });
+            })
+
+          ForEach(this.categories.slice(0, 6), (cat: Category) => {
             Text(cat.name)
               .fontSize(13)
               .fontColor('#333')
@@ -109,10 +118,7 @@ struct HomeTab {
           }, (cat: Category) => cat.categoryId)
         }
         .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-      }
-      .scrollable(ScrollDirection.Horizontal)
-      .scrollBar(BarState.Off)
-      .height(40)
+        .width('100%')
 
       if (this.isLoading) {
         Column() {
