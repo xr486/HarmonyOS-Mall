@@ -154,6 +154,27 @@ struct ProductListPage {
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
+      } else if (this.getFilteredProducts().length === 0) {
+        Column() {
+          Column() {
+            Text('暂无商品')
+              .fontSize(16)
+              .fontColor('#999')
+            Text('换个分类看看吧')
+              .fontSize(14)
+              .fontColor('#999')
+              .margin({ top: 8 })
+          }
+          .width(120)
+          .height(120)
+          .backgroundColor('#F5F5F5')
+          .borderRadius(60)
+          .justifyContent(FlexAlign.Center)
+          .margin({ bottom: 16 })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
       } else {
         Scroll() {
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
@@ -175,6 +196,11 @@ struct ProductListPage {
         .layoutWeight(1)
         .scrollBar(BarState.Off)
         .backgroundColor('#F5F5F5')
+        .onScrollEdge((side: ScrollEdge) => {
+          if (side === ScrollEdge.Top) {
+            this.loadData();
+          }
+        })
       }
     }
     .width('100%')
