@@ -1,4 +1,5 @@
 import { Product } from '../common/models';
+import { LazyImage } from './LazyImage';
 
 @Component
 export struct ProductCard {
@@ -8,12 +9,14 @@ export struct ProductCard {
   build() {
     Column() {
       Column() {
-        Image(this.product.images && this.product.images.length > 0 ? this.product.images[0] : '')
-          .width('100%')
-          .height(160)
-          .objectFit(ImageFit.Cover)
-          .borderRadius({ topLeft: 8, topRight: 8 })
-          .alt($r('app.media.app_icon'))
+        LazyImage({
+          src: this.product.images && this.product.images.length > 0 ? this.product.images[0] : '',
+          width: '100%',
+          height: 160,
+          objectFit: ImageFit.Cover,
+          borderRadius: { topLeft: 8, topRight: 8 },
+          alt: $r('app.media.app_icon')
+        })
 
         Column() {
           Text(this.product.name)
