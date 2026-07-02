@@ -2,7 +2,7 @@ import { ProductService } from '../services/product/ProductService';
 import { CategoryService } from '../services/product/CategoryService';
 import { Product, Category } from '../common/models';
 import { ProductCard } from '../components/ProductCard';
-import { router } from '@ohos.router';
+import router from '@ohos.router';
 
 type SortType = 'default' | 'price-asc' | 'price-desc' | 'sales' | 'rating';
 

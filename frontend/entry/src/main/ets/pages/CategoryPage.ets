@@ -1,6 +1,6 @@
 import { CategoryService } from '../services/product/CategoryService';
 import { Category } from '../common/models';
-import { router } from '@ohos.router';
+import router from '@ohos.router';
 
 @Entry
 @Component
@@ -121,7 +121,7 @@ struct CategoryPage {
           Scroll() {
             Column() {
               if (this.childCategories.length > 0) {
-                Column() {
+                Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
                   ForEach(this.childCategories, (child: Category) => {
                     Column() {
                       if (child.icon) {
@@ -160,8 +160,6 @@ struct CategoryPage {
                     .onClick(() => { this.onChildCategoryClick(child); })
                   }, (child: Category) => child.categoryId)
                 }
-                .flexWrap(FlexWrap.Wrap)
-                .justifyContent(FlexAlign.SpaceBetween)
                 .padding(16)
                 .width('100%')
               } else {
