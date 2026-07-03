@@ -122,6 +122,9 @@ struct HomeTab {
         .backgroundColor('#F0F0F0')
         .borderRadius(20)
         .margin({ left: 12, right: 12, top: 36, bottom: 4 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SearchPage' });
+        })
 
       Row({ space: 12 }) {
         Text('全部分类')
