@@ -213,12 +213,13 @@ struct SearchPage {
             .width('100%')
             .padding({ left: 16, right: 16, top: 16, bottom: 8 })
 
-            Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
+            Flex({ wrap: FlexWrap.Wrap }) {
               ForEach(this.searchHistory, (word: string) => {
                 Text(word)
                   .fontSize(13)
                   .fontColor('#666')
                   .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                  .margin({ right: 8, bottom: 8 })
                   .borderRadius(14)
                   .backgroundColor('#F5F5F5')
                   .maxLines(1)
@@ -241,7 +242,7 @@ struct SearchPage {
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 8 })
 
-          Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
+          Flex({ wrap: FlexWrap.Wrap }) {
             ForEach(this.hotKeywords, (word: string, index: number) => {
               Row({ space: 4 }) {
                 Text(`${index + 1}`)
@@ -253,6 +254,7 @@ struct SearchPage {
                   .fontColor('#333')
               }
               .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .margin({ right: 8, bottom: 8 })
               .borderRadius(14)
               .backgroundColor('#FFF1F0')
               .onClick(() => { this.onHotClick(word); })

@@ -27,6 +27,8 @@ export interface Product {
   stock: number;
   /** 商品图片 URL 列表 */
   images: string[];
+  /** 商品主图 URL（后端单图字段） */
+  image?: string;
   /** 品牌 */
   brand: string;
   /** 分类 ID */
