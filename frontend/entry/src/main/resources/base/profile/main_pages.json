@@ -12,6 +12,7 @@
     "pages/OrderListPage",
     "pages/CategoryPage",
     "pages/ProductListPage",
-    "pages/SearchPage"
+    "pages/SearchPage",
+    "pages/SearchResultPage"
   ]
 }
