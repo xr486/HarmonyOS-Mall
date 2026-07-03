@@ -18,14 +18,14 @@ public class User {
     @Column(name = "phone", unique = true, nullable = false)
     private String phone;
 
+    @Column(name = "password")
+    private String password;
+
     @Column(name = "nickname")
     private String nickname;
 
     @Column(name = "avatar")
     private String avatar;
-
-    @Column(name = "huawei_account")
-    private String huaweiAccount;
 
     @Column(name = "created_at", nullable = false)
     private Long createdAt;

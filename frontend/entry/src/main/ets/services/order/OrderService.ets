@@ -1,16 +1,13 @@
-import { DatabaseHelper } from '../../database/helper/DatabaseHelper';
-import { CloudDBOrder } from '../../database/schema/CloudDBTypes';
-import { Order, OrderItem, OrderStatus, Address } from '../../common/models';
+import { HttpUtil, ApiResponse, CreateOrderBody } from '../../common/utils/http/HttpUtil';
+import { Order } from '../../common/models';
 import { Logger } from '../../common/utils/logger/Logger';
 
 const TAG = 'OrderService';
 
 export class OrderService {
   private static instance: OrderService | null = null;
-  private dbHelper: DatabaseHelper;
 
   private constructor() {
-    this.dbHelper = DatabaseHelper.getInstance();
   }
 
   static getInstance(): OrderService {
@@ -20,95 +17,62 @@ export class OrderService {
     return OrderService.instance;
   }
 
-  private convertToOrder(cloud: CloudDBOrder): Order {
-    const itemsStr: string = cloud.items || '[]';
-    const addressStr: string = cloud.address || '{}';
-    const items: OrderItem[] = JSON.parse(itemsStr) as OrderItem[];
-    const address: Address = JSON.parse(addressStr) as Address;
-    const order: Order = {
-      orderId: cloud.orderId || '',
-      orderNo: cloud.orderNo || '',
-      userId: cloud.userId || '',
-      totalAmount: cloud.totalAmount || 0,
-      status: (cloud.status ? parseInt(cloud.status) : OrderStatus.PENDING_PAYMENT) as OrderStatus,
-      items: items,
-      address: address,
-      remark: cloud.remark || '',
-      createdAt: cloud.createdAt || Date.now(),
-      expireTime: cloud.expireTime || 0
-    };
-    return order;
-  }
-
-  private convertToCloudOrder(order: Order): CloudDBOrder {
-    const cloud: CloudDBOrder = new CloudDBOrder();
-    cloud.orderId = order.orderId;
-    cloud.orderNo = order.orderNo;
-    cloud.userId = order.userId;
-    cloud.totalAmount = order.totalAmount;
-    cloud.status = order.status.toString();
-    cloud.items = JSON.stringify(order.items);
-    cloud.address = JSON.stringify(order.address);
-    cloud.paymentMethod = order.payment ? order.payment.method.toString() : '';
-    cloud.paymentStatus = order.payment ? order.payment.status.toString() : '';
-    cloud.remark = order.remark || '';
-    cloud.createdAt = order.createdAt;
-    cloud.paidAt = order.paidAt || 0;
-    cloud.completedAt = order.completedAt || 0;
-    cloud.expireTime = order.expireTime;
-    return cloud;
-  }
-
   async getAllOrders(userId: string): Promise<Order[]> {
-    const db = this.dbHelper.getDatabase();
-    if (!db) {
+    try {
+      const res: ApiResponse<Order[]> = await HttpUtil.get('/orders');
+      if (res.code === 200 && res.data) {
+        return res.data;
+      }
+      return [];
+    } catch (e) {
+      Logger.error(TAG, 'getAllOrders error: %{public}s', JSON.stringify(e));
       return [];
     }
-    const collection = db.collection(CloudDBOrder);
-    const result: CloudDBOrder[] = await collection.query().equalTo('userId', userId).get();
-    return result.map((item: CloudDBOrder) => this.convertToOrder(item));
   }
 
   async getOrderById(orderId: string): Promise<Order | null> {
-    const db = this.dbHelper.getDatabase();
-    if (!db) {
+    try {
+      const res: ApiResponse<Order> = await HttpUtil.get('/orders/' + orderId);
+      if (res.code === 200) {
+        return res.data;
+      }
+      return null;
+    } catch (e) {
+      Logger.error(TAG, 'getOrderById error: %{public}s', JSON.stringify(e));
       return null;
     }
-    const collection = db.collection(CloudDBOrder);
-    const result: CloudDBOrder[] = await collection.query().equalTo('orderId', orderId).get();
-    if (result.length > 0) {
-      return this.convertToOrder(result[0]);
-    }
-    return null;
   }
 
-  async createOrder(order: Order): Promise<void> {
-    const db = this.dbHelper.getDatabase();
-    if (!db) {
-      return;
-    }
-    const cloudOrder: CloudDBOrder = this.convertToCloudOrder(order);
-    const collection = db.collection(CloudDBOrder);
-    await collection.upsert(cloudOrder);
-    Logger.info(TAG, 'Order created: %{public}s', order.orderNo);
-  }
-
-  async updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
-    const db = this.dbHelper.getDatabase();
-    if (!db) {
-      return;
-    }
-    const collection = db.collection(CloudDBOrder);
-    const result: CloudDBOrder[] = await collection.query().equalTo('orderId', orderId).get();
-    if (result.length > 0) {
-      const cloudOrder: CloudDBOrder = result[0];
-      cloudOrder.status = status.toString();
-      await collection.upsert(cloudOrder);
-      Logger.info(TAG, 'Order status updated: %{public}s -> %{public}d', orderId, status);
+  async createOrder(order: Order): Promise<boolean> {
+    try {
+      const body: CreateOrderBody = new CreateOrderBody();
+      body.totalAmount = order.totalAmount;
+      body.items = order.items;
+      body.address = order.address;
+      body.remark = order.remark || '';
+      const res: ApiResponse<Object> = await HttpUtil.post('/orders', body);
+      if (res.code === 200) {
+        Logger.info(TAG, 'Order created: %{public}s', order.orderNo);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error(TAG, 'createOrder error: %{public}s', JSON.stringify(e));
+      return false;
     }
   }
 
-  async cancelOrder(orderId: string): Promise<void> {
-    await this.updateOrderStatus(orderId, OrderStatus.CANCELLED);
+  async cancelOrder(orderId: string): Promise<boolean> {
+    try {
+      const res: ApiResponse<Object> = await HttpUtil.put('/orders/' + orderId + '/cancel');
+      if (res.code === 200) {
+        Logger.info(TAG, 'Order cancelled: %{public}s', orderId);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error(TAG, 'cancelOrder error: %{public}s', JSON.stringify(e));
+      return false;
+    }
   }
 }

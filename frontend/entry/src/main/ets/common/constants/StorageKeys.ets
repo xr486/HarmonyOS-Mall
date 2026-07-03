@@ -6,6 +6,7 @@ export class StorageKeys {
   // 用户相关
   static readonly USER_TOKEN = 'user_token';
   static readonly USER_INFO = 'user_info';
+  static readonly USER_PHONE = 'user_phone';
   static readonly IS_LOGGED_IN = 'is_logged_in';
   
   // 应用相关

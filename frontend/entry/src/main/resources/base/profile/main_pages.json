@@ -1,6 +1,14 @@
-
 {
   "src": [
-    "pages/Index"
+    "pages/Index",
+    "pages/Login",
+    "pages/Register",
+    "pages/UserInfo",
+    "pages/AddressList",
+    "pages/AddressEdit",
+    "pages/HomePage",
+    "pages/CartPage",
+    "pages/ProductDetailPage",
+    "pages/OrderListPage"
   ]
 }

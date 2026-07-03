@@ -1,5 +1,5 @@
 import { OrderService } from '../services/order/OrderService';
-import { Order, OrderStatus } from '../common/models';
+import { Order, OrderStatus, OrderItem } from '../common/models';
 import router from '@ohos.router';
 
 @Entry

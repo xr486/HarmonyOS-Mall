@@ -1,15 +1,49 @@
+# ============================================================
+# 默认配置：MySQL 主库
+# 切换 H2 内存库：启动参数 --spring.profiles.active=h2
+# ============================================================
+spring:
+  profiles:
+    active: mysql
+
+# MySQL 配置
+---
+spring:
+  config:
+    activate:
+      on-profile: mysql
+  application:
+    name: hongmen-mall-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/hongmen_mall?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: 123456
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  sql:
+    init:
+      mode: never
 
 server:
   port: 8080
 
+# H2 开发配置（不需要 MySQL 时使用）
+---
 spring:
+  config:
+    activate:
+      on-profile: h2
   application:
     name: hongmen-mall-backend
   datasource:
     url: jdbc:h2:mem:hongmen_mall
-    driverClassName: org.h2.Driver
+    driver-class-name: org.h2.Driver
     username: sa
-    password: 
+    password:
   h2:
     console:
       enabled: true
@@ -19,6 +53,9 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+
+server:
+  port: 8080
 
 # 日志配置
 logging:
