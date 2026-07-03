@@ -1,6 +1,8 @@
 import router from '@ohos.router';
 import { StorageUtil } from '../common/utils/storage/StorageUtil';
 import { StorageKeys } from '../common/constants/StorageKeys';
+import { ProductService } from '../services/product/ProductService';
+import { Product } from '../common/models';
 import promptAction from '@ohos.promptAction';
 
 @Entry
@@ -8,10 +10,21 @@ import promptAction from '@ohos.promptAction';
 struct SearchPage {
   @State keyword: string = '';
   @State searchHistory: string[] = [];
-  hotKeywords: string[] = ['华为Mate60', 'iPhone 15', ' MacBook', '空调', '冰箱', '智能手表'];
+  @State suggestions: Product[] = [];
+  @State showSuggestions: boolean = false;
+  private hotKeywords: string[] = ['华为Mate60', 'iPhone 15', ' MacBook', '空调', '冰箱', '智能手表'];
+  private debounceId: number = -1;
+  private lastRequestKeyword: string = '';
 
   aboutToAppear(): void {
     this.loadSearchHistory();
+  }
+
+  aboutToDisappear(): void {
+    if (this.debounceId !== -1) {
+      clearTimeout(this.debounceId);
+      this.debounceId = -1;
+    }
   }
 
   async loadSearchHistory(): Promise<void> {
@@ -59,6 +72,7 @@ struct SearchPage {
       return;
     }
     this.saveSearchHistory(word);
+    this.showSuggestions = false;
     router.pushUrl({
       url: 'pages/SearchResultPage',
       params: { keyword: word }
@@ -72,6 +86,51 @@ struct SearchPage {
 
   onHotClick(word: string): void {
     this.keyword = word;
+    this.onSearch();
+  }
+
+  /**
+   * 输入框内容变化：防抖 400ms 触发联想请求
+   */
+  onInputChange(value: string): void {
+    this.keyword = value;
+    if (this.debounceId !== -1) {
+      clearTimeout(this.debounceId);
+      this.debounceId = -1;
+    }
+    const trimmed: string = value.trim();
+    if (!trimmed) {
+      this.suggestions = [];
+      this.showSuggestions = false;
+      return;
+    }
+    this.debounceId = setTimeout(() => {
+      this.fetchSuggestions(trimmed);
+    }, 400);
+  }
+
+  async fetchSuggestions(keyword: string): Promise<void> {
+    this.lastRequestKeyword = keyword;
+    try {
+      const service: ProductService = ProductService.getInstance();
+      const list: Product[] = await service.searchSuggestions(keyword, 5);
+      // 只在关键词未继续变化时更新，避免乱序
+      if (this.lastRequestKeyword === keyword) {
+        this.suggestions = list;
+        this.showSuggestions = list.length > 0;
+      }
+    } catch (e) {
+      this.suggestions = [];
+      this.showSuggestions = false;
+    }
+  }
+
+  /**
+   * 点击建议项：以商品名作为关键词搜索
+   */
+  onSuggestionClick(product: Product): void {
+    this.keyword = product.name;
+    this.showSuggestions = false;
     this.onSearch();
   }
 
@@ -89,7 +148,7 @@ struct SearchPage {
           .borderRadius(18)
           .backgroundColor('#F5F5F5')
           .fontSize(14)
-          .onChange((value: string) => { this.keyword = value; })
+          .onChange((value: string) => { this.onInputChange(value); })
           .onSubmit(() => { this.onSearch(); })
 
         Text('搜索')
@@ -102,6 +161,39 @@ struct SearchPage {
       .padding({ left: 12, right: 12 })
       .backgroundColor(Color.White)
       .alignItems(VerticalAlign.Center)
+
+      // 联想建议下拉
+      if (this.showSuggestions && this.suggestions.length > 0) {
+        Column() {
+          ForEach(this.suggestions, (product: Product) => {
+            Row() {
+              Text('🔍')
+                .fontSize(14)
+                .fontColor('#999')
+              Text(product.name)
+                .fontSize(14)
+                .fontColor('#333')
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .layoutWeight(1)
+                .margin({ left: 8 })
+              if (product.brand) {
+                Text(product.brand)
+                  .fontSize(11)
+                  .fontColor('#999')
+              }
+            }
+            .width('100%')
+            .height(44)
+            .padding({ left: 16, right: 16 })
+            .alignItems(VerticalAlign.Center)
+            .onClick(() => { this.onSuggestionClick(product); })
+          }, (product: Product) => product.productId)
+        }
+        .width('100%')
+        .backgroundColor(Color.White)
+        .borderRadius({ bottomLeft: 8, bottomRight: 8 })
+      }
 
       Scroll() {
         Column() {
@@ -185,6 +277,7 @@ struct SearchPage {
       .layoutWeight(1)
       .backgroundColor('#FFFFFF')
       .scrollBar(BarState.Off)
+      .visibility(this.showSuggestions ? Visibility.None : Visibility.Visible)
     }
     .width('100%')
     .height('100%')
