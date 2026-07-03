@@ -1,4 +1,3 @@
-
 package com.hongmen.mall.entity;
 
 import jakarta.persistence.*;
@@ -22,13 +21,16 @@ public class Product {
     private String description;
 
     @Column(name = "price", nullable = false)
-    private Long price;
+    private Double price;
 
     @Column(name = "original_price")
-    private Long originalPrice;
+    private Double originalPrice;
 
     @Column(name = "stock", nullable = false)
     private Integer stock;
+
+    @Column(name = "image")
+    private String image;
 
     @Column(name = "images", columnDefinition = "TEXT")
     private String images;
@@ -56,4 +58,7 @@ public class Product {
 
     @Column(name = "created_at", nullable = false)
     private Long createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Long updatedAt;
 }

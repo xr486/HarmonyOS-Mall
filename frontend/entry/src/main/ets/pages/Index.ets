@@ -3,15 +3,41 @@ import { CategoryService } from '../services/product/CategoryService';
 import { CartService } from '../services/cart/CartService';
 import { OrderService } from '../services/order/OrderService';
 import { UserService } from '../services/user/UserService';
+import { AuthManager } from '../services/auth/AuthManager';
 import { Product, Category, CartItem, Order, OrderItem, User } from '../common/models';
 import { ProductCard } from '../components/ProductCard';
 import router from '@ohos.router';
+import promptAction from '@ohos.promptAction';
 
 @Entry
 @Component
 struct Index {
   @State currentTabIndex: number = 0;
+  @State tabUser: User | null = null;
   private tabTitles: string[] = ['首页', '购物车', '订单', '我的'];
+
+  aboutToAppear(): void {
+    this.loadTabUser();
+  }
+
+  onPageShow(): void {
+    this.loadTabUser();
+  }
+
+  async loadTabUser(): Promise<void> {
+    try {
+      const auth: AuthManager = AuthManager.getInstance();
+      const loggedIn: boolean = await auth.isLoggedIn();
+      if (!loggedIn) {
+        this.tabUser = null;
+        return;
+      }
+      const result: Object | null = await auth.getCurrentUser();
+      this.tabUser = result ? (result as User) : null;
+    } catch (e) {
+      this.tabUser = null;
+    }
+  }
 
   build() {
     Tabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
@@ -31,7 +57,7 @@ struct Index {
       .tabBar(this.TabBuilder(2))
 
       TabContent() {
-        UserTab()
+        UserTab({ userData: this.tabUser, onChangeLogout: () => { this.tabUser = null; } })
       }
       .tabBar(this.TabBuilder(3))
     }
@@ -79,7 +105,7 @@ struct HomeTab {
       const prodService: ProductService = ProductService.getInstance();
       const cats: Category[] = await catService.getAllCategories();
       const prods: Product[] = await prodService.getAllProducts();
-      this.categories = cats;
+      this.categories = cats.filter((c: Category) => !c.parentId);
       this.products = prods;
     } catch (e) {
       this.products = [];
@@ -97,22 +123,34 @@ struct HomeTab {
         .borderRadius(20)
         .margin({ left: 12, right: 12, top: 36, bottom: 4 })
 
-      Scroll() {
-        Row({ space: 12 }) {
-          ForEach(this.categories, (cat: Category) => {
-            Text(cat.name)
-              .fontSize(13)
-              .fontColor('#333')
-              .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-              .borderRadius(14)
-              .backgroundColor('#F5F5F5')
-          }, (cat: Category) => cat.categoryId)
-        }
-        .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+      Row({ space: 12 }) {
+        Text('全部分类')
+          .fontSize(13)
+          .fontColor('#FF4D4F')
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .borderRadius(14)
+          .backgroundColor('#FFF1F0')
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/CategoryPage' });
+          })
+
+        ForEach(this.categories.slice(0, 6), (cat: Category) => {
+          Text(cat.name)
+            .fontSize(13)
+            .fontColor('#333')
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+            .borderRadius(14)
+            .backgroundColor('#F5F5F5')
+            .onClick(() => {
+              router.pushUrl({
+                url: 'pages/ProductListPage',
+                params: { categoryId: cat.categoryId, categoryName: cat.name }
+              });
+            })
+        }, (cat: Category) => cat.categoryId)
       }
-      .scrollable(ScrollDirection.Horizontal)
-      .scrollBar(BarState.Off)
-      .height(40)
+      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+      .width('100%')
 
       if (this.isLoading) {
         Column() {
@@ -413,21 +451,8 @@ struct OrderTab {
 
 @Component
 struct UserTab {
-  @State user: User | null = null;
-
-  aboutToAppear(): void {
-    this.loadUser();
-  }
-
-  async loadUser(): Promise<void> {
-    try {
-      const service: UserService = UserService.getInstance();
-      const result: User | null = await service.getUserById('default_user');
-      this.user = result;
-    } catch (e) {
-      this.user = null;
-    }
-  }
+  @Prop userData: User | null = null;
+  onChangeLogout?: () => void;
 
   build() {
     Column() {
@@ -447,10 +472,10 @@ struct UserTab {
               Circle().width(60).height(60).fill('#FF4D4F')
             }
             Column() {
-              Text(this.user ? this.user.nickname : '未登录')
+              Text(this.userData ? this.userData.nickname : '未登录')
                 .fontSize(20)
                 .fontWeight(FontWeight.Bold)
-              Text(this.user ? this.user.phone : '点击登录')
+              Text(this.userData ? this.userData.phone : '点击登录')
                 .fontSize(14)
                 .fontColor('#999')
                 .margin({ top: 4 })
@@ -463,6 +488,13 @@ struct UserTab {
           .backgroundColor(Color.White)
           .borderRadius(12)
           .margin({ bottom: 10 })
+          .onClick(() => {
+            if (!this.userData) {
+              router.pushUrl({ url: 'pages/Login' });
+            } else {
+              router.pushUrl({ url: 'pages/UserInfo' });
+            }
+          })
 
           Column() {
             Row() {
@@ -472,6 +504,9 @@ struct UserTab {
             .width('100%')
             .justifyContent(FlexAlign.SpaceBetween)
             .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/OrderListPage' });
+            })
             Divider().margin({ left: 16 })
             Row() {
               Text('收货地址').fontSize(15)
@@ -480,6 +515,9 @@ struct UserTab {
             .width('100%')
             .justifyContent(FlexAlign.SpaceBetween)
             .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/AddressList' });
+            })
             Divider().margin({ left: 16 })
             Row() {
               Text('我的收藏').fontSize(15)
@@ -523,6 +561,14 @@ struct UserTab {
             .height(44)
             .borderRadius(22)
             .margin({ top: 30 })
+            .onClick(async () => {
+              const auth: AuthManager = AuthManager.getInstance();
+              await auth.signOut();
+              if (this.onChangeLogout) {
+                this.onChangeLogout();
+              }
+              promptAction.showToast({ message: '已退出登录' });
+            })
         }
         .padding(12)
         .width('100%')
