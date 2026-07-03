@@ -29,13 +29,13 @@ struct SearchResultPage {
   @State brandOptions: string[] = [];
   @State selectedBrands: string[] = [];
   @State categoryOptions: Category[] = [];
-  @State selectedCategoryId: string = '';
+  @State selectedCategoryIds: string[] = [];
   @State ratingFilter: RatingFilter = 0;
   // 用于面板内临时编辑（确定后才应用）
   @State draftMinPrice: string = '';
   @State draftMaxPrice: string = '';
   @State draftSelectedBrands: string[] = [];
-  @State draftSelectedCategoryId: string = '';
+  @State draftSelectedCategoryIds: string[] = [];
   @State draftRatingFilter: RatingFilter = 0;
   private sortLabels: string[] = ['综合', '销量', '价格↑', '价格↓', '评分'];
   private ratingLabels: string[] = ['不限', '4分及以上', '3分及以上'];
@@ -107,8 +107,8 @@ struct SearchResultPage {
     if (this.selectedBrands.length > 0) {
       list = list.filter((p: Product) => this.selectedBrands.indexOf(p.brand) >= 0);
     }
-    if (this.selectedCategoryId) {
-      list = list.filter((p: Product) => p.categoryId === this.selectedCategoryId);
+    if (this.selectedCategoryIds.length > 0) {
+      list = list.filter((p: Product) => this.selectedCategoryIds.indexOf(p.categoryId) >= 0);
     }
     if (this.ratingFilter === 1) {
       list = list.filter((p: Product) => p.rating >= 4);
@@ -147,7 +147,7 @@ struct SearchResultPage {
     this.draftMinPrice = this.minPrice;
     this.draftMaxPrice = this.maxPrice;
     this.draftSelectedBrands = this.selectedBrands.slice();
-    this.draftSelectedCategoryId = this.selectedCategoryId;
+    this.draftSelectedCategoryIds = this.selectedCategoryIds.slice();
     this.draftRatingFilter = this.ratingFilter;
     this.showFilter = true;
   }
@@ -160,7 +160,7 @@ struct SearchResultPage {
     this.minPrice = this.draftMinPrice;
     this.maxPrice = this.draftMaxPrice;
     this.selectedBrands = this.draftSelectedBrands.slice();
-    this.selectedCategoryId = this.draftSelectedCategoryId;
+    this.selectedCategoryIds = this.draftSelectedCategoryIds.slice();
     this.ratingFilter = this.draftRatingFilter;
     this.showFilter = false;
     this.applyFiltersAndSort();
@@ -170,7 +170,7 @@ struct SearchResultPage {
     this.draftMinPrice = '';
     this.draftMaxPrice = '';
     this.draftSelectedBrands = [];
-    this.draftSelectedCategoryId = '';
+    this.draftSelectedCategoryIds = [];
     this.draftRatingFilter = 0;
   }
 
@@ -187,8 +187,17 @@ struct SearchResultPage {
     return this.draftSelectedBrands.indexOf(brand) >= 0;
   }
 
-  selectDraftCategory(categoryId: string): void {
-    this.draftSelectedCategoryId = this.draftSelectedCategoryId === categoryId ? '' : categoryId;
+  toggleDraftCategory(categoryId: string): void {
+    const idx: number = this.draftSelectedCategoryIds.indexOf(categoryId);
+    if (idx >= 0) {
+      this.draftSelectedCategoryIds.splice(idx, 1);
+    } else {
+      this.draftSelectedCategoryIds.push(categoryId);
+    }
+  }
+
+  isDraftCategorySelected(categoryId: string): boolean {
+    return this.draftSelectedCategoryIds.indexOf(categoryId) >= 0;
   }
 
   selectDraftRating(rating: RatingFilter): void {
@@ -200,7 +209,7 @@ struct SearchResultPage {
    */
   hasActiveFilter(): boolean {
     return !!(this.minPrice || this.maxPrice || this.selectedBrands.length > 0
-      || this.selectedCategoryId || this.ratingFilter !== 0);
+      || this.selectedCategoryIds.length > 0 || this.ratingFilter !== 0);
   }
 
   // ============ 关键词高亮辅助方法 ============
@@ -324,20 +333,16 @@ struct SearchResultPage {
             Column() {
               ForEach(this.filteredResults, (product: Product) => {
                 Row({ space: 10 }) {
-                  if (product.image) {
-                    Image(product.image)
-                      .width(100)
-                      .height(100)
-                      .borderRadius(6)
-                      .objectFit(ImageFit.Cover)
-                      .alt($r('app.media.app_icon'))
-                  } else {
-                    Column()
-                      .width(100)
-                      .height(100)
-                      .borderRadius(6)
-                      .backgroundColor('#F0F0F0')
+                  Column() {
+                    Text('图')
+                      .fontSize(12)
+                      .fontColor('#BBB')
                   }
+                  .width(100)
+                  .height(100)
+                  .borderRadius(6)
+                  .backgroundColor('#F0F0F0')
+                  .justifyContent(FlexAlign.Center)
 
                   Column() {
                     Text(product.name)
@@ -381,16 +386,192 @@ struct SearchResultPage {
                 .onClick(() => { this.onProductClick(product); })
               }, (product: Product) => product.productId)
             }
-            .padding({ left: 12, right: 12, top: 4 })
+            .padding({ left: 12, right: 12, top: 8, bottom: 8 })
             .width('100%')
+            .alignItems(HorizontalAlign.Start)
           }
           .layoutWeight(1)
+          .scrollable(ScrollDirection.Vertical)
           .scrollBar(BarState.Off)
           .backgroundColor('#F5F5F5')
+          .edgeEffect(EdgeEffect.Spring)
+          .align(Alignment.TopStart)
         }
     }
     .width('100%')
     .height('100%')
     .backgroundColor('#F5F5F5')
+    .bindSheet($$this.showFilter, this.FilterSheetBuilder(), {
+      height: SheetSize.MEDIUM,
+      dragBar: true,
+      showClose: false,
+      backgroundColor: Color.White
+    })
+  }
+
+  @Builder
+  FilterSheetBuilder() {
+    Column() {
+      // 标题栏
+      Row() {
+        Text('筛选')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#333')
+          .layoutWeight(1)
+        Text('重置')
+          .fontSize(13)
+          .fontColor('#999')
+          .onClick(() => { this.resetFilter(); })
+      }
+      .width('100%')
+      .height(48)
+      .padding({ left: 16, right: 16 })
+      .alignItems(VerticalAlign.Center)
+
+      Scroll() {
+        Column() {
+          // 价格区间
+          Text('价格区间')
+            .fontSize(14)
+            .fontColor('#333')
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
+
+          Row({ space: 10 }) {
+            TextInput({ text: this.draftMinPrice, placeholder: '最低价' })
+              .layoutWeight(1)
+              .height(36)
+              .borderRadius(6)
+              .backgroundColor('#F5F5F5')
+              .fontSize(13)
+              .onChange((value: string) => { this.draftMinPrice = value; })
+
+            Text('-')
+              .fontSize(14)
+              .fontColor('#999')
+
+            TextInput({ text: this.draftMaxPrice, placeholder: '最高价' })
+              .layoutWeight(1)
+              .height(36)
+              .borderRadius(6)
+              .backgroundColor('#F5F5F5')
+              .fontSize(13)
+              .onChange((value: string) => { this.draftMaxPrice = value; })
+          }
+          .width('100%')
+          .margin({ bottom: 16 })
+
+          // 品牌
+          Text('品牌')
+            .fontSize(14)
+            .fontColor('#333')
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
+
+          if (this.brandOptions.length === 0) {
+            Text('暂无品牌')
+              .fontSize(12)
+              .fontColor('#bbb')
+              .margin({ bottom: 16 })
+          } else {
+            Flex({ wrap: FlexWrap.Wrap }) {
+              ForEach(this.brandOptions, (brand: string) => {
+                Text(brand)
+                  .fontSize(12)
+                  .fontColor(this.isDraftBrandSelected(brand) ? '#FFFFFF' : '#666')
+                  .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                  .margin({ right: 8, bottom: 8 })
+                  .borderRadius(14)
+                  .backgroundColor(this.isDraftBrandSelected(brand) ? '#FF4D4F' : '#F5F5F5')
+                  .onClick(() => { this.toggleDraftBrand(brand); })
+              }, (brand: string) => brand)
+            }
+            .width('100%')
+            .margin({ bottom: 16 })
+          }
+
+          // 分类
+          Text('分类')
+            .fontSize(14)
+            .fontColor('#333')
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
+
+          Flex({ wrap: FlexWrap.Wrap }) {
+            ForEach(this.categoryOptions, (cat: Category) => {
+              Text(cat.name)
+                .fontSize(12)
+                .fontColor(this.isDraftCategorySelected(cat.categoryId) ? '#FFFFFF' : '#666')
+                .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+                .margin({ right: 8, bottom: 8 })
+                .borderRadius(14)
+                .backgroundColor(this.isDraftCategorySelected(cat.categoryId) ? '#FF4D4F' : '#F5F5F5')
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .onClick(() => { this.toggleDraftCategory(cat.categoryId); })
+            }, (cat: Category) => cat.categoryId)
+          }
+          .width('100%')
+          .margin({ bottom: 16 })
+
+          // 评分
+          Text('评分')
+            .fontSize(14)
+            .fontColor('#333')
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
+
+          Row({ space: 8 }) {
+            ForEach(this.ratingLabels, (label: string, index: number) => {
+              Text(label)
+                .fontSize(12)
+                .fontColor(this.draftRatingFilter === index ? '#FFFFFF' : '#666')
+                .padding({ left: 14, right: 14, top: 6, bottom: 6 })
+                .borderRadius(14)
+                .backgroundColor(this.draftRatingFilter === index ? '#FF4D4F' : '#F5F5F5')
+                .onClick(() => { this.selectDraftRating(index as RatingFilter); })
+            }, (label: string, index: number) => `${label}-${index}`)
+          }
+          .width('100%')
+          .margin({ bottom: 16 })
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16 })
+      }
+      .layoutWeight(1)
+      .scrollBar(BarState.Off)
+      .width('100%')
+
+      // 底部按钮
+      Row({ space: 12 }) {
+        Button('取消')
+          .layoutWeight(1)
+          .height(40)
+          .fontSize(14)
+          .fontColor('#666')
+          .backgroundColor('#F5F5F5')
+          .borderRadius(20)
+          .onClick(() => { this.cancelFilter(); })
+
+        Button('确定')
+          .layoutWeight(1)
+          .height(40)
+          .fontSize(14)
+          .fontColor('#FFFFFF')
+          .backgroundColor('#FF4D4F')
+          .borderRadius(20)
+          .onClick(() => { this.confirmFilter(); })
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 8, bottom: 16 })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor(Color.White)
   }
 }
