@@ -22,18 +22,17 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         if (categoryRepository.count() > 0) return;
 
-        long now = System.currentTimeMillis();
-
         // 分类
-        Category c1 = categoryRepository.save(createCategory("cat-1", "手机数码", null, 1, now));
-        Category c2 = categoryRepository.save(createCategory("cat-2", "电脑办公", null, 2, now));
-        Category c3 = categoryRepository.save(createCategory("cat-3", "家用电器", null, 3, now));
-        Category c4 = categoryRepository.save(createCategory("cat-4", "服饰鞋包", null, 4, now));
-        Category c5 = categoryRepository.save(createCategory("cat-1-1", "智能手机", "cat-1", 1, now));
-        Category c6 = categoryRepository.save(createCategory("cat-1-2", "智能手表", "cat-1", 2, now));
-        Category c7 = categoryRepository.save(createCategory("cat-3-1", "空调", "cat-3", 1, now));
-        Category c8 = categoryRepository.save(createCategory("cat-3-2", "冰箱", "cat-3", 2, now));
+        Category c1 = categoryRepository.save(createCategory("cat-1", "手机数码", null, 1));
+        Category c2 = categoryRepository.save(createCategory("cat-2", "电脑办公", null, 2));
+        Category c3 = categoryRepository.save(createCategory("cat-3", "家用电器", null, 3));
+        Category c4 = categoryRepository.save(createCategory("cat-4", "服饰鞋包", null, 4));
+        Category c5 = categoryRepository.save(createCategory("cat-1-1", "智能手机", "cat-1", 1));
+        Category c6 = categoryRepository.save(createCategory("cat-1-2", "智能手表", "cat-1", 2));
+        Category c7 = categoryRepository.save(createCategory("cat-3-1", "空调", "cat-3", 1));
+        Category c8 = categoryRepository.save(createCategory("cat-3-2", "冰箱", "cat-3", 2));
 
+        long now = System.currentTimeMillis();
         // 商品
         productRepository.save(createProduct("p-1", "华为Mate 60 Pro", "华为旗舰手机，卫星通信，昆仑玻璃",
                 6999.00, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Huawei+Mate+60+Pro+smartphone+product+photo+white+background&image_size=square",
@@ -55,14 +54,12 @@ public class DataInitializer implements CommandLineRunner {
                 "cat-3-2", "海尔", now, 4444));
     }
 
-    private Category createCategory(String id, String name, String parentId, int sort, long time) {
+    private Category createCategory(String id, String name, String parentId, int sort) {
         Category c = new Category();
         c.setCategoryId(id);
         c.setName(name);
         c.setParentId(parentId);
         c.setSortOrder(sort);
-        c.setCreatedAt(time);
-        c.setUpdatedAt(time);
         return c;
     }
 
