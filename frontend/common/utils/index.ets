@@ -2,4 +2,5 @@
 export { HttpUtil } from './http/HttpUtil';
 export { StorageUtil } from './storage/StorageUtil';
 export { Logger } from './logger/Logger';
-export { LocationManager } from './location/LocationManager';
+export { LocationManager, LocationInfo } from './location/LocationManager';
+export { GeoCoder, AddressComponent, ReverseGeoCodeResult, GeoCodeResult } from './location/GeoCoder';
