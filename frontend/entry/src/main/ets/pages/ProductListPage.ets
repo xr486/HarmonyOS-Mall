@@ -37,10 +37,10 @@ struct ProductListPage {
       const catService: CategoryService = CategoryService.getInstance();
       const allProducts: Product[] = await prodService.getAllProducts();
       const allCategories: Category[] = await catService.getAllCategories();
-      
+
       this.products = allProducts;
       this.allCategories = allCategories;
-      
+
       if (this.baseCategoryId) {
         const targetCategory: Category | undefined = allCategories.find((c: Category) => c.categoryId === this.baseCategoryId);
         if (targetCategory) {
@@ -68,7 +68,7 @@ struct ProductListPage {
 
   getFilteredProducts(): Product[] {
     let result: Product[] = [...this.products];
-    
+
     if (this.baseCategoryId) {
       const targetCategory: Category | undefined = this.allCategories.find((c: Category) => c.categoryId === this.baseCategoryId);
       if (targetCategory) {
@@ -82,9 +82,9 @@ struct ProductListPage {
             .filter((c: Category) => c.parentId === this.baseCategoryId)
             .map((c: Category) => c.categoryId);
           childIds.push(this.baseCategoryId);
-          
+
           result = result.filter((p: Product) => childIds.includes(p.categoryId));
-          
+
           if (this.selectedCategoryId && this.selectedCategoryId !== this.baseCategoryId && this.selectedCategoryId !== '') {
             result = result.filter((p: Product) => p.categoryId === this.selectedCategoryId);
           }
@@ -108,7 +108,7 @@ struct ProductListPage {
       default:
         break;
     }
-    
+
     return result;
   }
 
