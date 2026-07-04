@@ -97,6 +97,7 @@ struct HomeTab {
         .borderRadius(20)
         .margin({ left: 12, right: 12, top: 36, bottom: 4 })
 
+<<<<<<< Updated upstream
       Scroll() {
         Row({ space: 12 }) {
           ForEach(this.categories, (cat: Category) => {
@@ -109,6 +110,53 @@ struct HomeTab {
           }, (cat: Category) => cat.categoryId)
         }
         .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+=======
+      Row() {
+        Text('📍 附近好物')
+          .fontSize(14)
+          .fontColor('#FF4D4F')
+          .layoutWeight(1)
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/NearbyPage' });
+          })
+        Image($r('sys.media.ohos_ic_public_arrow_right'))
+          .width(16).height(16).fillColor('#FF4D4F')
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 6, bottom: 6 })
+      .backgroundColor('#FFF1F0')
+      .margin({ left: 12, right: 12, top: 6, bottom: 4 })
+      .borderRadius(8)
+      .onClick(() => {
+        router.pushUrl({ url: 'pages/NearbyPage' });
+      })
+
+      Row({ space: 12 }) {
+        Text('全部分类')
+          .fontSize(13)
+          .fontColor('#FF4D4F')
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .borderRadius(14)
+          .backgroundColor('#FFF1F0')
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/CategoryPage' });
+          })
+
+        ForEach(this.categories.slice(0, 6), (cat: Category) => {
+          Text(cat.name)
+            .fontSize(13)
+            .fontColor('#333')
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+            .borderRadius(14)
+            .backgroundColor('#F5F5F5')
+            .onClick(() => {
+              router.pushUrl({
+                url: 'pages/ProductListPage',
+                params: { categoryId: cat.categoryId, categoryName: cat.name }
+              });
+            })
+        }, (cat: Category) => cat.categoryId)
+>>>>>>> Stashed changes
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)

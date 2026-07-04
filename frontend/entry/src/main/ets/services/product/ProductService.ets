@@ -150,4 +150,19 @@ export class ProductService {
       throw new Error('Failed to search products: ' + JSON.stringify(error));
     }
   }
+
+  async searchSuggestions(keyword: string, limit: number = 5): Promise<Product[]> {
+    try {
+      const url: string =
+        '/products/search?keyword=' + encodeURIComponent(keyword) + '&limit=' + limit;
+      const res: ApiResponse<Product[]> = await HttpUtil.get(url);
+      if (res.code === 200 && res.data) {
+        return res.data.slice(0, limit);
+      }
+      return [];
+    } catch (e) {
+      Logger.error(TAG, 'searchSuggestions error: %{public}s', JSON.stringify(e));
+      return [];
+    }
+  }
 }

@@ -1,6 +1,24 @@
 
 {
   "src": [
+<<<<<<< Updated upstream
     "pages/Index"
+=======
+    "pages/Index",
+    "pages/Login",
+    "pages/Register",
+    "pages/UserInfo",
+    "pages/AddressList",
+    "pages/AddressEdit",
+    "pages/HomePage",
+    "pages/CartPage",
+    "pages/ProductDetailPage",
+    "pages/OrderListPage",
+    "pages/CategoryPage",
+    "pages/ProductListPage",
+    "pages/SearchPage",
+    "pages/SearchResultPage",
+    "pages/NearbyPage"
+>>>>>>> Stashed changes
   ]
 }

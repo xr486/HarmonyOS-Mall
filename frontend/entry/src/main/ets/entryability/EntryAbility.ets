@@ -5,9 +5,15 @@ import type Want from '@ohos.app.ability.Want';
 import { initialize } from '@hw-agconnect/hmcore';
 import type { JsonTypeInfo } from '@hw-agconnect/hmcore';
 import { util } from '@kit.ArkTS';
+<<<<<<< Updated upstream
 import { DatabaseHelper } from '../database/helper';
 import { DataInitializer } from '../database/DataInitializer';
 import { AuthManager } from '../services/auth/AuthManager';
+=======
+import { DatabaseHelper } from '../database/helper/DatabaseHelper';
+import { StorageUtil } from '../common/utils/storage/StorageUtil';
+import { LocationManager } from '../common/utils';
+>>>>>>> Stashed changes
 
 export default class EntryAbility extends UIAbility {
   private agcInitPromise: Promise<void> | null = null;
@@ -18,6 +24,12 @@ export default class EntryAbility extends UIAbility {
     AppStorage.setOrCreate('abilityContext', this.context);
     AppStorage.setOrCreate('uiAbilityContext', this.context);
 
+<<<<<<< Updated upstream
+=======
+    StorageUtil.getInstance().init(this.context);
+    LocationManager.getInstance().init(this.context);
+
+>>>>>>> Stashed changes
     this.agcInitPromise = this.initAGC();
   }
 
