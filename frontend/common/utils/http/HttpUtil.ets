@@ -11,7 +11,7 @@ export interface ApiResponse<T> {
 }
 
 export class HttpUtil {
-  private static readonly BASE_URL = 'https://api.hongmen-mall.example.com/v1';
+  private static readonly BASE_URL = 'http://192.168.208.219:8080/api/v1';
   private static readonly DEFAULT_TIMEOUT = 30000;
 
   static async get<T>(url: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
