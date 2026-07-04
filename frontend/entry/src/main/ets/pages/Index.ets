@@ -105,7 +105,7 @@ struct HomeTab {
       const prodService: ProductService = ProductService.getInstance();
       const cats: Category[] = await catService.getAllCategories();
       const prods: Product[] = await prodService.getAllProducts();
-      this.categories = cats;
+      this.categories = cats.filter((c: Category) => !c.parentId);
       this.products = prods;
     } catch (e) {
       this.products = [];
@@ -123,22 +123,34 @@ struct HomeTab {
         .borderRadius(20)
         .margin({ left: 12, right: 12, top: 36, bottom: 4 })
 
-      Scroll() {
-        Row({ space: 12 }) {
-          ForEach(this.categories, (cat: Category) => {
-            Text(cat.name)
-              .fontSize(13)
-              .fontColor('#333')
-              .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-              .borderRadius(14)
-              .backgroundColor('#F5F5F5')
-          }, (cat: Category) => cat.categoryId)
-        }
-        .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+      Row({ space: 12 }) {
+        Text('全部分类')
+          .fontSize(13)
+          .fontColor('#FF4D4F')
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .borderRadius(14)
+          .backgroundColor('#FFF1F0')
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/CategoryPage' });
+          })
+
+        ForEach(this.categories.slice(0, 6), (cat: Category) => {
+          Text(cat.name)
+            .fontSize(13)
+            .fontColor('#333')
+            .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+            .borderRadius(14)
+            .backgroundColor('#F5F5F5')
+            .onClick(() => {
+              router.pushUrl({
+                url: 'pages/ProductListPage',
+                params: { categoryId: cat.categoryId, categoryName: cat.name }
+              });
+            })
+        }, (cat: Category) => cat.categoryId)
       }
-      .scrollable(ScrollDirection.Horizontal)
-      .scrollBar(BarState.Off)
-      .height(40)
+      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+      .width('100%')
 
       if (this.isLoading) {
         Column() {

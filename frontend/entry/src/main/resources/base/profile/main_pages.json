@@ -9,6 +9,8 @@
     "pages/HomePage",
     "pages/CartPage",
     "pages/ProductDetailPage",
-    "pages/OrderListPage"
+    "pages/OrderListPage",
+    "pages/CategoryPage",
+    "pages/ProductListPage"
   ]
 }
