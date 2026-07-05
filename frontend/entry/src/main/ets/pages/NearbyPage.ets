@@ -1,5 +1,9 @@
-import { LocationManager, GeoCoder, NearbyService } from '../common/utils';
-import type { LocationInfo, AddressComponent, NearbyProduct } from '../common/utils';
+import { LocationManager } from '../common/utils/location/LocationManager';
+import { GeoCoder } from '../common/utils/location/GeoCoder';
+import { NearbyService } from '../common/utils/location/NearbyService';
+import type { LocationInfo } from '../common/utils/location/LocationManager';
+import type { AddressComponent } from '../common/utils/location/GeoCoder';
+import type { NearbyProduct } from '../common/utils/location/NearbyService';
 import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
 
@@ -16,30 +20,40 @@ struct NearbyPage {
   }
 
   async loadNearby(): Promise<void> {
+    console.info('[NearbyPage] loadNearby started');
     this.isLoading = true;
     try {
       const locMgr: LocationManager = LocationManager.getInstance();
       const geo: GeoCoder = GeoCoder.getInstance();
       const nearbySvc: NearbyService = NearbyService.getInstance();
 
+      console.info('[NearbyPage] getting location...');
       const location: LocationInfo = await locMgr.getCurrentLocation();
+      console.info(`[NearbyPage] location: ${location.latitude}, ${location.longitude}`);
+
+      console.info('[NearbyPage] reverse geocoding...');
       const geoResult = await geo.reverseGeocode(location);
       this.geoAddr = geoResult.addressComponent;
       this.address = `${geoResult.addressComponent.city}${geoResult.addressComponent.district}`;
+      console.info(`[NearbyPage] address: ${this.address}`);
 
+      console.info('[NearbyPage] getting nearby products...');
       const list: NearbyProduct[] = await nearbySvc.getNearbyProducts({
         latitude: location.latitude,
         longitude: location.longitude,
         radius: 50,
         limit: 20
       });
+      console.info(`[NearbyPage] found ${list.length} products`);
 
       this.products = nearbySvc.sortByDistance(list);
     } catch (e) {
+      console.error(`[NearbyPage] loadNearby error: ${JSON.stringify(e)}`);
       this.address = '定位失败';
       this.products = [];
     }
     this.isLoading = false;
+    console.info('[NearbyPage] loadNearby finished, products count:', this.products.length);
   }
 
   onProductClick(product: NearbyProduct): void {

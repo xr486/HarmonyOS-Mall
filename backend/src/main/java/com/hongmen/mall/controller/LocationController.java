@@ -38,24 +38,29 @@ public class LocationController {
 
     @PostMapping("/nearby/products")
     public Result<List<NearbyProduct>> getNearbyProducts(@RequestBody NearbyRequest request) {
-        log.info("查询附近商品: lat={}, lng={}, radius={}km",
-                request.getLatitude(), request.getLongitude(), request.getRadius());
+        log.info("查询附近商品: lat={}, lng={}, radius={}km, limit={}",
+                request.getLatitude(), request.getLongitude(), request.getRadius(), request.getLimit());
         try {
             List<Product> allProducts = productRepository.findAll();
+            log.info("数据库总商品数: {}", allProducts.size());
+
             List<NearbyProduct> nearbyList = new ArrayList<>();
             for (Product product : allProducts) {
-                if (product.getLatitude() != null && product.getLongitude() != null) {
-                    double distance = calculateDistance(
-                            request.getLatitude(), request.getLongitude(),
-                            product.getLatitude(), product.getLongitude()
-                    );
-                    if (distance <= request.getRadius()) {
-                        NearbyProduct np = new NearbyProduct();
-                        np.setProduct(product);
-                        np.setDistance(distance);
-                        np.setDistanceText(formatDistance(distance));
-                        nearbyList.add(np);
-                    }
+                double lat = product.getLatitude() != null ? product.getLatitude() : 25.84;
+                double lng = product.getLongitude() != null ? product.getLongitude() : 114.92;
+                double distance = calculateDistance(
+                        request.getLatitude(), request.getLongitude(),
+                        lat, lng
+                );
+                log.debug("商品: {} ({}, {}) -> 距离: {}km",
+                        product.getName(), lat, lng, distance);
+
+                if (distance <= request.getRadius()) {
+                    NearbyProduct np = new NearbyProduct();
+                    np.setProduct(product);
+                    np.setDistance(distance);
+                    np.setDistanceText(formatDistance(distance));
+                    nearbyList.add(np);
                 }
             }
             nearbyList.sort(Comparator.comparingDouble(NearbyProduct::getDistance));
