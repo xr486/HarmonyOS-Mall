@@ -69,4 +69,25 @@ export class ProductService {
       return [];
     }
   }
+
+  /**
+   * 搜索建议：根据关键字返回前 N 个匹配商品，用于输入框实时联想
+   * 后端 /products/search 已支持 name/description/brand 三字段模糊匹配
+   */
+  async searchSuggestions(keyword: string, limit: number = 5): Promise<Product[]> {
+    const trimmed: string = keyword.trim();
+    if (!trimmed) {
+      return [];
+    }
+    try {
+      const products: Product[] = await this.searchProducts(trimmed);
+      if (products.length <= limit) {
+        return products;
+      }
+      return products.slice(0, limit);
+    } catch (e) {
+      Logger.error(TAG, 'searchSuggestions error: %{public}s', JSON.stringify(e));
+      return [];
+    }
+  }
 }

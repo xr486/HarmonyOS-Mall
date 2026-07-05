@@ -216,7 +216,7 @@ struct ProductListPage {
         .justifyContent(FlexAlign.Center)
       } else {
         Scroll() {
-          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween, alignContent: FlexAlign.Start }) {
             ForEach(this.getFilteredProducts(), (product: Product) => {
               ProductCard({
                 product: product,
@@ -235,6 +235,7 @@ struct ProductListPage {
         .layoutWeight(1)
         .scrollBar(BarState.Off)
         .backgroundColor('#F5F5F5')
+        .align(Alignment.TopStart)
       }
     }
     .width('100%')
