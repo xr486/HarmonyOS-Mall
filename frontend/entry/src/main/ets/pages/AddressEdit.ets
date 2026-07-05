@@ -4,6 +4,7 @@ import { Logger } from '../common/utils/logger/Logger';
 import { StorageUtil } from '../common/utils/storage/StorageUtil';
 import { StorageKeys } from '../common/constants/StorageKeys';
 import { getProvinceData, Province, City, District } from '../common/utils/RegionData';
+import { AddressAutoFill } from '../common/utils/location/AddressAutoFill';
 import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
 
@@ -30,6 +31,7 @@ struct AddressEdit {
   @State districts: string[] = [];
 
   @State showRegionPicker: boolean = false;
+  @State isAutoFilling: boolean = false;
 
   @State currentProvinceIndex: number = 0;
   @State currentCityIndex: number = 0;
@@ -142,6 +144,57 @@ struct AddressEdit {
 
   cancelRegion(): void {
     this.showRegionPicker = false;
+  }
+
+  async autoFillFromLocation(): Promise<void> {
+    if (this.isAutoFilling) {
+      return;
+    }
+    this.isAutoFilling = true;
+    promptAction.showToast({ message: '正在定位...' });
+    try {
+      const result = await AddressAutoFill.getInstance().fillFromCurrentLocation();
+      if (result.success && result.address) {
+        this.province = result.address.province;
+        this.city = result.address.city;
+        this.district = result.address.district;
+        this.regionText = this.province + this.city + this.district;
+        if (result.address.street) {
+          this.detail = result.address.street + (result.address.streetNumber || '');
+        }
+        promptAction.showToast({ message: '定位成功，已自动填充' });
+        this.syncRegionPicker();
+      } else {
+        promptAction.showToast({ message: result.error || '定位失败' });
+      }
+    } catch (e) {
+      Logger.error(TAG, 'Auto fill failed: %{public}s', JSON.stringify(e));
+      promptAction.showToast({ message: '定位失败，请重试' });
+    }
+    this.isAutoFilling = false;
+  }
+
+  syncRegionPicker(): void {
+    if (this.province) {
+      const provIdx = getProvinceData().findIndex((p: Province) => p.name === this.province);
+      if (provIdx >= 0) {
+        this.currentProvinceIndex = provIdx;
+        this.updateCities(provIdx);
+        if (this.city) {
+          const cityIdx = this.cities.findIndex((c: string) => c === this.city);
+          if (cityIdx >= 0) {
+            this.currentCityIndex = cityIdx;
+            this.updateDistricts(cityIdx);
+            if (this.district) {
+              const distIdx = this.districts.findIndex((d: string) => d === this.district);
+              if (distIdx >= 0) {
+                this.currentDistrictIndex = distIdx;
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   async saveAddress(): Promise<void> {
@@ -436,6 +489,19 @@ struct AddressEdit {
         .fontColor(this.regionText ? '#333333' : '#999999')
         .layoutWeight(1)
         .textAlign(TextAlign.End)
+
+      Button() {
+        Image($r('sys.media.ohos_ic_public_location'))
+          .width(20)
+          .height(20)
+          .fillColor('#FF4D4F')
+      }
+      .type(ButtonType.Normal)
+      .backgroundColor(Color.Transparent)
+      .enabled(!this.isAutoFilling)
+      .onClick(() => {
+        this.autoFillFromLocation();
+      })
 
       Image($r('sys.media.ohos_ic_public_arrow_right'))
         .width(16)

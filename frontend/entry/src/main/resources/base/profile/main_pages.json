@@ -13,6 +13,7 @@
     "pages/CategoryPage",
     "pages/ProductListPage",
     "pages/SearchPage",
-    "pages/SearchResultPage"
+    "pages/SearchResultPage",
+    "pages/NearbyPage"
   ]
 }
