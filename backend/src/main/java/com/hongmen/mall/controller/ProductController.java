@@ -47,10 +47,26 @@ public class ProductController {
 
     /**
      * 搜索商品
+     * 支持忽略空格/大小写匹配：用户输入 "华为Mate60" 也能匹配到 "华为Mate 60 Pro"
      */
     @GetMapping("/search")
     public Result<List<Product>> searchProducts(@RequestParam String keyword) {
-        return Result.success(productRepository.findByNameContainingOrDescriptionContainingOrBrandContainingOrderBySalesCountDesc(
-                keyword, keyword, keyword));
+        // 去除所有空白字符，统一为紧凑形式做精确匹配
+        String normalizedKeyword = keyword.replaceAll("\\s+", "").toLowerCase();
+        return Result.success(productRepository.findAll().stream()
+                .filter(p -> {
+                    if (normalizedKeyword.isEmpty()) return true;
+                    // 对 name / description / brand 分别去空格后 contains
+                    String normalizedName = (p.getName() != null ? p.getName() : "")
+                            .replaceAll("\\s+", "").toLowerCase();
+                    String normalizedDesc = (p.getDescription() != null ? p.getDescription() : "")
+                            .replaceAll("\\s+", "").toLowerCase();
+                    String normalizedBrand = (p.getBrand() != null ? p.getBrand() : "")
+                            .replaceAll("\\s+", "").toLowerCase();
+                    return normalizedName.contains(normalizedKeyword)
+                            || normalizedDesc.contains(normalizedKeyword)
+                            || normalizedBrand.contains(normalizedKeyword);
+                })
+                .toList());
     }
 }

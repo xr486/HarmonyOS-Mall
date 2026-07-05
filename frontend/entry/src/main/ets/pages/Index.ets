@@ -122,6 +122,9 @@ struct HomeTab {
         .backgroundColor('#F0F0F0')
         .borderRadius(20)
         .margin({ left: 12, right: 12, top: 36, bottom: 4 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SearchPage' });
+        })
 
       Row({ space: 12 }) {
         Text('全部分类')
@@ -134,7 +137,17 @@ struct HomeTab {
             router.pushUrl({ url: 'pages/CategoryPage' });
           })
 
-        ForEach(this.categories.slice(0, 6), (cat: Category) => {
+        Text('附近好物')
+          .fontSize(13)
+          .fontColor('#1890FF')
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .borderRadius(14)
+          .backgroundColor('#E6F7FF')
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/NearbyPage' });
+          })
+
+        ForEach(this.categories.slice(0, 5), (cat: Category) => {
           Text(cat.name)
             .fontSize(13)
             .fontColor('#333')
