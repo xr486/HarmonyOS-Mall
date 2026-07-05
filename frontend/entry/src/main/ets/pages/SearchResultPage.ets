@@ -333,16 +333,26 @@ struct SearchResultPage {
             Column() {
               ForEach(this.filteredResults, (product: Product) => {
                 Row({ space: 10 }) {
-                  Column() {
-                    Text('图')
-                      .fontSize(12)
-                      .fontColor('#BBB')
+                  // 商品图片 — 使用 images 字段
+                  if (product.images && product.images.length > 0) {
+                    Image(product.images[0])
+                      .width(100)
+                      .height(100)
+                      .borderRadius(6)
+                      .objectFit(ImageFit.Cover)
+                      .alt($r('app.media.app_icon'))
+                  } else {
+                    Column() {
+                      Text('暂无图片')
+                        .fontSize(11)
+                        .fontColor('#BBB')
+                    }
+                    .width(100)
+                    .height(100)
+                    .borderRadius(6)
+                    .backgroundColor('#F0F0F0')
+                    .justifyContent(FlexAlign.Center)
                   }
-                  .width(100)
-                  .height(100)
-                  .borderRadius(6)
-                  .backgroundColor('#F0F0F0')
-                  .justifyContent(FlexAlign.Center)
 
                   Column() {
                     Text(product.name)
