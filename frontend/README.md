@@ -74,9 +74,24 @@ hongmen-mall/
 ### 运行步骤
 
 1. 使用 DevEco Studio 打开本项目
-2. 等待依赖同步完成
-3. 连接鸿蒙设备或启动模拟器
-4. 点击运行按钮
+2. 在终端中运行初始化脚本：
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File install.ps1
+   ```
+   > 该脚本会自动安装依赖并修复 hmcore SDK 在 Windows 模拟器上的 ABI 兼容性问题。
+   > 如果使用真机（arm64-v8a），可跳过此步骤，直接 `ohpm install` 即可。
+3. 等待依赖同步完成
+4. 连接鸿蒙设备或启动模拟器
+5. 点击运行按钮
+
+### 已知问题：模拟器 ABI 不匹配
+
+Windows 模拟器为 **x86_64** 架构，但 `@hw-agconnect/hmcore` SDK 自带 `arm64-v8a` 的 `.so` 文件，导致安装时报错：
+```
+code:9568347
+error: install parse native so failed.
+```
+运行 `install.ps1` 或 `scripts/fix-hmcore.ps1` 即可自动修复。真机部署无此问题。
 
 ### AppGallery Connect 配置
 

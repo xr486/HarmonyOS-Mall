@@ -30,7 +30,7 @@ struct AddressList {
     this.isLoading = true;
     try {
       const service: AddressService = AddressService.getInstance();
-      const addresses: Address[] = await service.getAddressesByUser(this.userId);
+      const addresses: Address[] = await service.getAddressesByUserId(this.userId);
       this.addressList = addresses;
     } catch (e) {
       Logger.error(TAG, 'Load addresses failed: %{public}s', JSON.stringify(e));
