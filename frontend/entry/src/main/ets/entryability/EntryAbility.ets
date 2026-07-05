@@ -7,6 +7,7 @@ import type { JsonTypeInfo } from '@hw-agconnect/hmcore';
 import { util } from '@kit.ArkTS';
 import { DatabaseHelper } from '../database/helper/DatabaseHelper';
 import { StorageUtil } from '../common/utils/storage/StorageUtil';
+import { LocationManager } from '../common/utils/location/LocationManager';
 
 export default class EntryAbility extends UIAbility {
   private agcInitPromise: Promise<void> | null = null;
@@ -18,6 +19,7 @@ export default class EntryAbility extends UIAbility {
     AppStorage.setOrCreate('uiAbilityContext', this.context);
 
     StorageUtil.getInstance().init(this.context);
+    LocationManager.getInstance().init(this.context);
 
     this.agcInitPromise = this.initAGC();
   }

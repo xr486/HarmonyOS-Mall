@@ -1,8 +1,35 @@
-import { HttpUtil, ApiResponse, UpdateUserBody } from '../../common/utils/http/HttpUtil';
+import { HttpUtil, ApiResponse } from '../../common/utils/http/HttpUtil';
 import { User } from '../../common/models';
 import { Logger } from '../../common/utils/logger/Logger';
 
 const TAG = 'UserService';
+
+interface UserResponse {
+  userId: string;
+  phone: string;
+  nickname: string;
+  avatar: string;
+  huaweiAccount?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface UpdateUserRequest {
+  nickname: string;
+  avatar: string;
+}
+
+function convertToUser(item: UserResponse): User {
+  return {
+    userId: item.userId,
+    phone: item.phone,
+    nickname: item.nickname,
+    avatar: item.avatar,
+    huaweiAccount: item.huaweiAccount,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt
+  };
+}
 
 export class UserService {
   private static instance: UserService | null = null;
@@ -19,57 +46,55 @@ export class UserService {
 
   async getUserById(userId: string): Promise<User | null> {
     try {
-      const res: ApiResponse<User> = await HttpUtil.get('/user/info');
-      if (res.code === 200) {
-        return res.data;
+      const response: ApiResponse<UserResponse> = await HttpUtil.get<UserResponse>(`/user/${userId}`);
+      if (response.code === 200 && response.data) {
+        return convertToUser(response.data);
       }
-      Logger.error(TAG, 'getUserById failed: %{public}s', res.message);
       return null;
-    } catch (e) {
-      Logger.error(TAG, 'getUserById error: %{public}s', JSON.stringify(e));
+    } catch (error) {
+      const errMsg: string = error instanceof Error ? error.message : JSON.stringify(error);
+      Logger.error(TAG, 'Failed to get user by id: %{public}s', errMsg);
       return null;
     }
   }
 
   async getUserByPhone(phone: string): Promise<User | null> {
     try {
-      const res: ApiResponse<User> = await HttpUtil.get('/user/info');
-      if (res.code === 200) {
-        return res.data;
+      const response: ApiResponse<UserResponse> = await HttpUtil.get<UserResponse>(`/user/phone/${phone}`);
+      if (response.code === 200 && response.data) {
+        return convertToUser(response.data);
       }
       return null;
-    } catch (e) {
-      Logger.error(TAG, 'getUserByPhone error: %{public}s', JSON.stringify(e));
+    } catch (error) {
+      const errMsg: string = error instanceof Error ? error.message : JSON.stringify(error);
+      Logger.error(TAG, 'Failed to get user by phone: %{public}s', errMsg);
       return null;
     }
   }
 
-  async updateUserInfo(data: Record<string, string>): Promise<User | null> {
+  async createUser(user: User): Promise<void> {
     try {
-      const res: ApiResponse<User> = await HttpUtil.put('/user/info', data);
-      if (res.code === 200) {
-        return res.data;
-      }
-      Logger.error(TAG, 'updateUserInfo failed: %{public}s', res.message);
-      return null;
-    } catch (e) {
-      Logger.error(TAG, 'updateUserInfo error: %{public}s', JSON.stringify(e));
-      return null;
+      await HttpUtil.post<object>('/user', user);
+      Logger.info(TAG, 'User created successfully: %{public}s', user.userId);
+    } catch (error) {
+      const errMsg: string = error instanceof Error ? error.message : JSON.stringify(error);
+      Logger.error(TAG, 'Failed to create user: %{public}s', errMsg);
+      throw new Error('Failed to create user: ' + errMsg);
     }
   }
 
-  async updateUser(user: User): Promise<User | null> {
+  async updateUser(user: User): Promise<void> {
     try {
-      const body: UpdateUserBody = new UpdateUserBody();
-      body.nickname = user.nickname || '';
-      const res: ApiResponse<User> = await HttpUtil.put('/user/info', body);
-      if (res.code === 200) {
-        return res.data;
-      }
-      return null;
-    } catch (e) {
-      Logger.error(TAG, 'updateUser error: %{public}s', JSON.stringify(e));
-      return null;
+      const req: UpdateUserRequest = {
+        nickname: user.nickname,
+        avatar: user.avatar
+      };
+      await HttpUtil.put<object>('/user/info', req);
+      Logger.info(TAG, 'User updated successfully: %{public}s', user.userId);
+    } catch (error) {
+      const errMsg: string = error instanceof Error ? error.message : JSON.stringify(error);
+      Logger.error(TAG, 'Failed to update user: %{public}s', errMsg);
+      throw new Error('Failed to update user: ' + errMsg);
     }
   }
 }
