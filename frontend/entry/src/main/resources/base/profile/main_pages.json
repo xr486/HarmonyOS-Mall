@@ -1,9 +1,5 @@
-
 {
   "src": [
-<<<<<<< Updated upstream
-    "pages/Index"
-=======
     "pages/Index",
     "pages/Login",
     "pages/Register",
@@ -15,10 +11,6 @@
     "pages/ProductDetailPage",
     "pages/OrderListPage",
     "pages/CategoryPage",
-    "pages/ProductListPage",
-    "pages/SearchPage",
-    "pages/SearchResultPage",
-    "pages/NearbyPage"
->>>>>>> Stashed changes
+    "pages/ProductListPage"
   ]
 }

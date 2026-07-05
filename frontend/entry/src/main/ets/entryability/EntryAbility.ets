@@ -5,15 +5,8 @@ import type Want from '@ohos.app.ability.Want';
 import { initialize } from '@hw-agconnect/hmcore';
 import type { JsonTypeInfo } from '@hw-agconnect/hmcore';
 import { util } from '@kit.ArkTS';
-<<<<<<< Updated upstream
-import { DatabaseHelper } from '../database/helper';
-import { DataInitializer } from '../database/DataInitializer';
-import { AuthManager } from '../services/auth/AuthManager';
-=======
 import { DatabaseHelper } from '../database/helper/DatabaseHelper';
 import { StorageUtil } from '../common/utils/storage/StorageUtil';
-import { LocationManager } from '../common/utils';
->>>>>>> Stashed changes
 
 export default class EntryAbility extends UIAbility {
   private agcInitPromise: Promise<void> | null = null;
@@ -24,12 +17,8 @@ export default class EntryAbility extends UIAbility {
     AppStorage.setOrCreate('abilityContext', this.context);
     AppStorage.setOrCreate('uiAbilityContext', this.context);
 
-<<<<<<< Updated upstream
-=======
     StorageUtil.getInstance().init(this.context);
-    LocationManager.getInstance().init(this.context);
 
->>>>>>> Stashed changes
     this.agcInitPromise = this.initAGC();
   }
 
@@ -41,8 +30,10 @@ export default class EntryAbility extends UIAbility {
       const jsonObj: JsonTypeInfo = JSON.parse(jsonStr) as JsonTypeInfo;
       initialize(this.context, jsonObj);
 
-      AuthManager.getInstance().init();
-      console.info('[EntryAbility] AGC initialized');
+      // 初始化 CloudDB 缓存层（浏览记录、离线购物车、设备偏好）
+      DatabaseHelper.getInstance().init();
+
+      console.info('[EntryAbility] AGC + CloudDB cache initialized');
     } catch (error) {
       console.error('[EntryAbility] Failed to init AGC:', (error as Error).message);
     }
@@ -55,18 +46,15 @@ export default class EntryAbility extends UIAbility {
   onWindowStageCreate(windowStage: window.WindowStage): void {
     console.info('[EntryAbility] onWindowStageCreate');
 
-    windowStage.loadContent('pages/Index', async (err) => {
+    windowStage.loadContent('pages/Index', async (err, data) => {
       if (err.code) {
         console.error(`Failed to load content. Code: ${err.code}, message: ${err.message}`);
         return;
       }
 
       if (this.agcInitPromise) {
-        console.info('[EntryAbility] Waiting for AGC init...');
         await this.agcInitPromise;
       }
-      DatabaseHelper.getInstance().init();
-      await DataInitializer.getInstance().initTestData();
       console.info('Succeeded in loading content.');
     });
   }

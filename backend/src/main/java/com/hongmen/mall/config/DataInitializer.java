@@ -5,14 +5,12 @@ import com.hongmen.mall.entity.Product;
 import com.hongmen.mall.repository.CategoryRepository;
 import com.hongmen.mall.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@Slf4j
+/**
+ * 测试数据初始化
+ */
 @Component
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
@@ -22,103 +20,67 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (categoryRepository.count() > 0) {
-            log.info("数据已存在，跳过初始化");
-            return;
-        }
-        log.info("开始初始化测试数据...");
-        initCategories();
-        initProducts();
-        log.info("测试数据初始化完成");
+        if (categoryRepository.count() > 0) return;
+
+        long now = System.currentTimeMillis();
+
+        // 分类
+        Category c1 = categoryRepository.save(createCategory("cat-1", "手机数码", null, 1, now));
+        Category c2 = categoryRepository.save(createCategory("cat-2", "电脑办公", null, 2, now));
+        Category c3 = categoryRepository.save(createCategory("cat-3", "家用电器", null, 3, now));
+        Category c4 = categoryRepository.save(createCategory("cat-4", "服饰鞋包", null, 4, now));
+        Category c5 = categoryRepository.save(createCategory("cat-1-1", "智能手机", "cat-1", 1, now));
+        Category c6 = categoryRepository.save(createCategory("cat-1-2", "智能手表", "cat-1", 2, now));
+        Category c7 = categoryRepository.save(createCategory("cat-3-1", "空调", "cat-3", 1, now));
+        Category c8 = categoryRepository.save(createCategory("cat-3-2", "冰箱", "cat-3", 2, now));
+
+        // 商品
+        productRepository.save(createProduct("p-1", "华为Mate 60 Pro", "华为旗舰手机，卫星通信，昆仑玻璃",
+                6999.00, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Huawei+Mate+60+Pro+smartphone+product+photo+white+background&image_size=square",
+                "cat-1-1", "华为", now, 9999));
+        productRepository.save(createProduct("p-2", "iPhone 15 Pro Max", "Apple最新旗舰，A17 Pro芯片，钛金属设计",
+                9999.00, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=iPhone+15+Pro+Max+product+photo+white+background&image_size=square",
+                "cat-1-1", "苹果", now, 8888));
+        productRepository.save(createProduct("p-3", "华为Watch GT 4", "智能手表，两周长续航，健康监测",
+                2488.00, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Huawei+Watch+GT+4+smartwatch+product+photo+white+background&image_size=square",
+                "cat-1-2", "华为", now, 5555));
+        productRepository.save(createProduct("p-4", "MacBook Pro 14", "M3 Pro芯片，Liquid Retina XDR显示屏",
+                14999.00, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=MacBook+Pro+14+laptop+product+photo+white+background&image_size=square",
+                "cat-2", "苹果", now, 3333));
+        productRepository.save(createProduct("p-5", "格力空调 大1.5匹", "新一级能效，变频冷暖，自清洁",
+                3299.00, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Gree+air+conditioner+product+photo+white+background&image_size=square",
+                "cat-3-1", "格力", now, 6666));
+        productRepository.save(createProduct("p-6", "海尔冰箱 500L", "风冷无霜，干湿分储，智能温控",
+                4299.00, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Haier+refrigerator+product+photo+white+background&image_size=square",
+                "cat-3-2", "海尔", now, 4444));
     }
 
-    private void initCategories() {
-        List<Category> categories = new ArrayList<>();
-        categories.add(createCategory("cat_001", "手机数码", 1));
-        categories.add(createCategory("cat_002", "电脑办公", 2));
-        categories.add(createCategory("cat_003", "家用电器", 3));
-        categories.add(createCategory("cat_004", "服饰鞋包", 4));
-        categories.add(createCategory("cat_005", "食品生鲜", 5));
-        categories.add(createCategory("cat_006", "美妆护肤", 6));
-        categoryRepository.saveAll(categories);
-        log.info("初始化 {} 个分类", categories.size());
+    private Category createCategory(String id, String name, String parentId, int sort, long time) {
+        Category c = new Category();
+        c.setCategoryId(id);
+        c.setName(name);
+        c.setParentId(parentId);
+        c.setSortOrder(sort);
+        c.setCreatedAt(time);
+        c.setUpdatedAt(time);
+        return c;
     }
 
-    private void initProducts() {
-        List<Product> products = new ArrayList<>();
-
-        products.add(createProduct("prod_001", "华为Mate 60 Pro", "旗舰手机 麒麟芯片 卫星通信", 699900L,
-                799900L, 100, "cat_001", "华为", 4.9, 1523,
-                30.254, 120.150));
-
-        products.add(createProduct("prod_002", "Apple iPhone 15", "A17 Pro芯片 4800万像素", 599900L,
-                699900L, 80, "cat_001", "Apple", 4.8, 2341,
-                30.260, 120.160));
-
-        products.add(createProduct("prod_003", "MacBook Pro 14", "M3芯片 18GB内存 512GB存储", 1499900L,
-                1699900L, 50, "cat_002", "Apple", 4.9, 892,
-                30.255, 120.155));
-
-        products.add(createProduct("prod_004", "戴尔XPS 15", "13代i7 16GB 1TB 3.5K OLED", 999900L,
-                1199900L, 30, "cat_002", "戴尔", 4.7, 467,
-                31.230, 121.470));
-
-        products.add(createProduct("prod_005", "美的空调 1.5匹", "新一级能效 变频冷暖 自清洁", 329900L,
-                399900L, 200, "cat_003", "美的", 4.6, 3156,
-                30.252, 120.148));
-
-        products.add(createProduct("prod_006", "海尔冰箱 500L", "风冷无霜 双变频 干湿分储", 459900L,
-                529900L, 60, "cat_003", "海尔", 4.8, 1203,
-                31.235, 121.475));
-
-        products.add(createProduct("prod_007", "Nike Air Jordan 1", "经典复刻 高帮板鞋", 129900L,
-                149900L, 300, "cat_004", "Nike", 4.7, 4521,
-                30.250, 120.152));
-
-        products.add(createProduct("prod_008", "三只松鼠坚果礼盒", "每日坚果 混合装 750g", 8990L,
-                12990L, 500, "cat_005", "三只松鼠", 4.5, 8932,
-                30.257, 120.153));
-
-        products.add(createProduct("prod_009", "兰蔻小黑瓶精华", "第二代 修护维稳 30ml", 76000L,
-                95000L, 150, "cat_006", "兰蔻", 4.8, 2345,
-                31.232, 121.468));
-
-        products.add(createProduct("prod_010", "索尼WH-1000XM5", "头戴式无线降噪耳机", 249900L,
-                299900L, 90, "cat_001", "索尼", 4.9, 678,
-                30.256, 120.158));
-
-        productRepository.saveAll(products);
-        log.info("初始化 {} 个商品（含经纬度坐标）", products.size());
-    }
-
-    private Category createCategory(String id, String name, Integer sortOrder) {
-        Category category = new Category();
-        category.setCategoryId(id);
-        category.setName(name);
-        category.setSortOrder(sortOrder);
-        category.setCreatedAt(System.currentTimeMillis());
-        category.setUpdatedAt(System.currentTimeMillis());
-        return category;
-    }
-
-    private Product createProduct(String productId, String name, String description,
-                                   Long price, Long originalPrice, Integer stock,
-                                   String categoryId, String brand, Double rating,
-                                   Integer salesCount, Double latitude, Double longitude) {
-        Product product = new Product();
-        product.setProductId(productId);
-        product.setName(name);
-        product.setDescription(description);
-        product.setPrice(price);
-        product.setOriginalPrice(originalPrice);
-        product.setStock(stock);
-        product.setCategoryId(categoryId);
-        product.setBrand(brand);
-        product.setRating(rating);
-        product.setSalesCount(salesCount);
-        product.setLatitude(latitude);
-        product.setLongitude(longitude);
-        product.setCreatedAt(System.currentTimeMillis());
-        return product;
+    private Product createProduct(String id, String name, String desc, double price,
+                                  String image, String catId, String brand, long time, int sales) {
+        Product p = new Product();
+        p.setProductId(id);
+        p.setName(name);
+        p.setDescription(desc);
+        p.setPrice(price);
+        p.setImage(image);
+        p.setCategoryId(catId);
+        p.setBrand(brand);
+        p.setStock(100);
+        p.setSalesCount(sales);
+        p.setRating(4.5);
+        p.setCreatedAt(time);
+        p.setUpdatedAt(time);
+        return p;
     }
 }

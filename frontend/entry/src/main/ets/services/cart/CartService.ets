@@ -1,5 +1,4 @@
-import { DatabaseHelper } from '../../database/helper/DatabaseHelper';
-import { CloudDBCartItem } from '../../database/schema/CloudDBTypes';
+import { HttpUtil, ApiResponse, AddCartBody, UpdateCartBody } from '../../common/utils/http/HttpUtil';
 import { CartItem } from '../../common/models';
 import { Logger } from '../../common/utils/logger/Logger';
 
@@ -7,10 +6,8 @@ const TAG = 'CartService';
 
 export class CartService {
   private static instance: CartService | null = null;
-  private dbHelper: DatabaseHelper;
 
   private constructor() {
-    this.dbHelper = DatabaseHelper.getInstance();
   }
 
   static getInstance(): CartService {
@@ -20,138 +17,97 @@ export class CartService {
     return CartService.instance;
   }
 
-  private convertToCartItem(cloudCartItem: CloudDBCartItem): CartItem {
-    return {
-      cartId: cloudCartItem.cartId || '',
-      userId: cloudCartItem.userId || '',
-      productId: cloudCartItem.productId || '',
-      productName: cloudCartItem.productName || '',
-      productImage: cloudCartItem.productImage || '',
-      price: cloudCartItem.price || 0,
-      quantity: cloudCartItem.quantity || 1,
-      selected: cloudCartItem.selected || false,
-      stock: cloudCartItem.stock || 0,
-      addedAt: cloudCartItem.addedAt || Date.now()
-    };
-  }
-
-  private convertToCloudCartItem(cartItem: CartItem): CloudDBCartItem {
-    const cloudCartItem: CloudDBCartItem = new CloudDBCartItem();
-    cloudCartItem.cartId = cartItem.cartId;
-    cloudCartItem.userId = cartItem.userId;
-    cloudCartItem.productId = cartItem.productId;
-    cloudCartItem.productName = cartItem.productName;
-    cloudCartItem.productImage = cartItem.productImage;
-    cloudCartItem.price = cartItem.price;
-    cloudCartItem.quantity = cartItem.quantity;
-    cloudCartItem.selected = cartItem.selected;
-    cloudCartItem.stock = cartItem.stock;
-    cloudCartItem.addedAt = cartItem.addedAt;
-    return cloudCartItem;
-  }
-
   async getCartItems(userId: string): Promise<CartItem[]> {
     try {
-      const db = this.dbHelper.getDatabase();
-      if (!db) {
-        const empty: CartItem[] = [];
-        return empty;
+      const res: ApiResponse<CartItem[]> = await HttpUtil.get('/cart');
+      if (res.code === 200 && res.data) {
+        return res.data;
       }
-      const collection = db.collection(CloudDBCartItem);
-      const cloudCartItems: CloudDBCartItem[] = await collection.query().get();
-      return cloudCartItems
-        .filter((item: CloudDBCartItem) => item.userId === userId)
-        .map((item: CloudDBCartItem) => this.convertToCartItem(item));
-    } catch (error) {
-      Logger.error(TAG, 'Failed to get cart items: %{public}s', JSON.stringify(error));
-      throw new Error('Failed to get cart items: ' + JSON.stringify(error));
+      return [];
+    } catch (e) {
+      Logger.error(TAG, 'getCartItems error: %{public}s', JSON.stringify(e));
+      return [];
     }
   }
 
-  async addToCart(cartItem: CartItem): Promise<void> {
+  async addToCart(cartItem: CartItem): Promise<boolean> {
     try {
-      const db = this.dbHelper.getDatabase();
-      if (!db) {
-        return;
+      const body: AddCartBody = new AddCartBody();
+      body.productId = cartItem.productId;
+      body.productName = cartItem.productName;
+      body.productImage = cartItem.productImage;
+      body.price = cartItem.price;
+      body.quantity = cartItem.quantity;
+      body.specs = '';
+      const res: ApiResponse<Object> = await HttpUtil.post('/cart', body);
+      if (res.code === 200) {
+        Logger.info(TAG, 'Item added to cart');
+        return true;
       }
-      const cloudCartItem: CloudDBCartItem = this.convertToCloudCartItem(cartItem);
-      const collection = db.collection(CloudDBCartItem);
-      await collection.upsert(cloudCartItem);
-      Logger.info(TAG, 'Item added to cart: %{public}s', cartItem.cartId);
-    } catch (error) {
-      Logger.error(TAG, 'Failed to add item to cart: %{public}s', JSON.stringify(error));
-      throw new Error('Failed to add item to cart: ' + JSON.stringify(error));
+      return false;
+    } catch (e) {
+      Logger.error(TAG, 'addToCart error: %{public}s', JSON.stringify(e));
+      return false;
     }
   }
 
-  async updateCartItemQuantity(cartId: string, quantity: number): Promise<void> {
+  async updateCartItemQuantity(cartId: string, quantity: number): Promise<boolean> {
     try {
-      const db = this.dbHelper.getDatabase();
-      if (!db) {
-        return;
-      }
-      const collection = db.collection(CloudDBCartItem);
-      const cartItems: CloudDBCartItem[] = await collection.query().equalTo('cartId', cartId).get();
-      if (cartItems.length > 0) {
-        cartItems[0].quantity = quantity;
-        await collection.upsert(cartItems[0]);
+      const body: UpdateCartBody = new UpdateCartBody();
+      body.quantity = quantity;
+      const res: ApiResponse<Object> = await HttpUtil.put('/cart/' + cartId, body);
+      if (res.code === 200) {
         Logger.info(TAG, 'Cart item quantity updated: %{public}s', cartId);
+        return true;
       }
-    } catch (error) {
-      Logger.error(TAG, 'Failed to update cart item quantity: %{public}s', JSON.stringify(error));
-      throw new Error('Failed to update cart item quantity: ' + JSON.stringify(error));
+      return false;
+    } catch (e) {
+      Logger.error(TAG, 'updateCartItemQuantity error: %{public}s', JSON.stringify(e));
+      return false;
     }
   }
 
-  async updateCartItemSelected(cartId: string, selected: boolean): Promise<void> {
+  async removeFromCart(cartId: string): Promise<boolean> {
     try {
-      const db = this.dbHelper.getDatabase();
-      if (!db) {
-        return;
-      }
-      const collection = db.collection(CloudDBCartItem);
-      const cartItems: CloudDBCartItem[] = await collection.query().equalTo('cartId', cartId).get();
-      if (cartItems.length > 0) {
-        cartItems[0].selected = selected;
-        await collection.upsert(cartItems[0]);
-        Logger.info(TAG, 'Cart item selected updated: %{public}s', cartId);
-      }
-    } catch (error) {
-      Logger.error(TAG, 'Failed to update cart item selected: %{public}s', JSON.stringify(error));
-      throw new Error('Failed to update cart item selected: ' + JSON.stringify(error));
-    }
-  }
-
-  async removeFromCart(cartId: string): Promise<void> {
-    try {
-      const db = this.dbHelper.getDatabase();
-      if (!db) {
-        return;
-      }
-      const collection = db.collection(CloudDBCartItem);
-      const cartItems: CloudDBCartItem[] = await collection.query().equalTo('cartId', cartId).get();
-      if (cartItems.length > 0) {
-        await collection.delete(cartItems[0]);
+      const res: ApiResponse<Object> = await HttpUtil.delete('/cart/' + cartId);
+      if (res.code === 200) {
         Logger.info(TAG, 'Item removed from cart: %{public}s', cartId);
+        return true;
       }
-    } catch (error) {
-      Logger.error(TAG, 'Failed to remove item from cart: %{public}s', JSON.stringify(error));
-      throw new Error('Failed to remove item from cart: ' + JSON.stringify(error));
+      return false;
+    } catch (e) {
+      Logger.error(TAG, 'removeFromCart error: %{public}s', JSON.stringify(e));
+      return false;
+    }
+  }
+
+  async clearCart(): Promise<boolean> {
+    try {
+      const res: ApiResponse<Object> = await HttpUtil.delete('/cart/clear');
+      if (res.code === 200) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      Logger.error(TAG, 'clearCart error: %{public}s', JSON.stringify(e));
+      return false;
     }
   }
 
   async calculateTotal(userId: string): Promise<number> {
     try {
-      const cartItems: CartItem[] = await this.getCartItems(userId);
-      const selectedItems: CartItem[] = cartItems.filter((item: CartItem) => item.selected);
+      const items: CartItem[] = await this.getCartItems(userId);
       let total: number = 0;
-      for (const item of selectedItems) {
-        total = total + (item.price * item.quantity);
+      for (let i: number = 0; i < items.length; i++) {
+        const item: CartItem = items[i];
+        if (item.selected) {
+          total = total + (item.price * item.quantity);
+        }
       }
       return total;
-    } catch (error) {
-      Logger.error(TAG, 'Failed to calculate total: %{public}s', JSON.stringify(error));
-      throw new Error('Failed to calculate total: ' + JSON.stringify(error));
+    } catch (e) {
+      Logger.error(TAG, 'calculateTotal error: %{public}s', JSON.stringify(e));
+      return 0;
     }
   }
 }
