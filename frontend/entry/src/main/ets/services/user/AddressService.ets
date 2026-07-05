@@ -17,15 +17,15 @@ export class AddressService {
     return AddressService.instance;
   }
 
-  async getAddressesByUser(userId: string): Promise<Address[]> {
+  async getAddressesByUserId(userId: string): Promise<Address[]> {
     try {
-      const res: ApiResponse<Address[]> = await HttpUtil.get('/addresses');
+      const res: ApiResponse<Address[]> = await HttpUtil.get('/addresses?userId=' + userId);
       if (res.code === 200 && res.data) {
         return res.data;
       }
       return [];
     } catch (e) {
-      Logger.error(TAG, 'getAddressesByUser error: %{public}s', JSON.stringify(e));
+      Logger.error(TAG, 'getAddressesByUserId error: %{public}s', JSON.stringify(e));
       return [];
     }
   }

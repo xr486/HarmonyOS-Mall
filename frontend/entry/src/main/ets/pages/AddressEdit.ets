@@ -3,6 +3,7 @@ import { Address } from '../common/models';
 import { Logger } from '../common/utils/logger/Logger';
 import { StorageUtil } from '../common/utils/storage/StorageUtil';
 import { StorageKeys } from '../common/constants/StorageKeys';
+import { getProvinceData, Province, City, District } from '../common/utils/RegionData';
 import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
 
@@ -24,7 +25,18 @@ struct AddressEdit {
   @State userId: string = '';
   @State regionText: string = '';
 
+  @State provinces: string[] = [];
+  @State cities: string[] = [];
+  @State districts: string[] = [];
+
+  @State showRegionPicker: boolean = false;
+
+  @State currentProvinceIndex: number = 0;
+  @State currentCityIndex: number = 0;
+  @State currentDistrictIndex: number = 0;
+
   aboutToAppear(): void {
+    this.provinces = getProvinceData().map((p: Province) => p.name);
     this.loadUserId();
     const params = router.getParams() as Record<string, string>;
     if (params && params['address']) {
@@ -53,24 +65,83 @@ struct AddressEdit {
     this.userId = phone || 'unknown';
   }
 
-  selectRegion(): void {
-    promptAction.showToast({ message: '省市区选择功能开发中' });
+  openRegionPicker(): void {
+    if (this.province) {
+      const provIdx = getProvinceData().findIndex((p: Province) => p.name === this.province);
+      if (provIdx >= 0) {
+        this.currentProvinceIndex = provIdx;
+        this.updateCities(provIdx);
+
+        if (this.city) {
+          const cityIdx = this.cities.findIndex((c: string) => c === this.city);
+          if (cityIdx >= 0) {
+            this.currentCityIndex = cityIdx;
+            this.updateDistricts(cityIdx);
+
+            if (this.district) {
+              const distIdx = this.districts.findIndex((d: string) => d === this.district);
+              if (distIdx >= 0) {
+                this.currentDistrictIndex = distIdx;
+              }
+            }
+          }
+        }
+      }
+    } else {
+      this.currentProvinceIndex = 0;
+      this.updateCities(0);
+      this.currentCityIndex = 0;
+      this.updateDistricts(0);
+      this.currentDistrictIndex = 0;
+    }
+    this.showRegionPicker = true;
   }
 
-  onNameChange(value: string): void {
-    this.name = value;
+  updateCities(provinceIndex: number): void {
+    const province = getProvinceData()[provinceIndex];
+    this.cities = province.cities.map((city: City) => city.name);
   }
 
-  onPhoneChange(value: string): void {
-    this.phone = value;
+  updateDistricts(cityIndex: number): void {
+    const province = getProvinceData()[this.currentProvinceIndex];
+    const city = province.cities[cityIndex];
+    this.districts = city.districts.map((district: District) => district.name);
   }
 
-  onDetailChange(value: string): void {
-    this.detail = value;
+  onProvinceChange(index: number): void {
+    this.currentProvinceIndex = index;
+    this.updateCities(index);
+    this.currentCityIndex = 0;
+    this.updateDistricts(0);
+    this.currentDistrictIndex = 0;
   }
 
-  onDefaultChange(isOn: boolean): void {
-    this.isDefault = isOn;
+  onCityChange(index: number): void {
+    this.currentCityIndex = index;
+    this.updateDistricts(index);
+    this.currentDistrictIndex = 0;
+  }
+
+  onDistrictChange(index: number): void {
+    this.currentDistrictIndex = index;
+  }
+
+  confirmRegion(): void {
+    const province = getProvinceData()[this.currentProvinceIndex];
+    this.province = province.name;
+
+    const city = province.cities[this.currentCityIndex];
+    this.city = city.name;
+
+    const district = city.districts[this.currentDistrictIndex];
+    this.district = district.name;
+
+    this.regionText = this.province + this.city + this.district;
+    this.showRegionPicker = false;
+  }
+
+  cancelRegion(): void {
+    this.showRegionPicker = false;
   }
 
   async saveAddress(): Promise<void> {
@@ -123,7 +194,9 @@ struct AddressEdit {
         await service.addAddress(newAddress);
         promptAction.showToast({ message: '添加成功' });
       }
-      router.back();
+      setTimeout(() => {
+        router.replaceUrl({ url: 'pages/AddressList' });
+      }, 1500);
     } catch (e) {
       Logger.error(TAG, 'Save address failed: %{public}s', JSON.stringify(e));
       promptAction.showToast({ message: '保存失败' });
@@ -136,14 +209,76 @@ struct AddressEdit {
   }
 
   build() {
-    Column() {
-      this.BuildHeader()
-      this.BuildContent()
-      this.BuildSaveButton()
+    Stack() {
+      Column() {
+        this.BuildHeader()
+        this.BuildContent()
+        this.BuildSaveButton()
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#F5F5F5')
+
+      if (this.showRegionPicker) {
+        Column() {
+          Column() {
+            Row() {
+              Text('取消')
+                .fontSize(16)
+                .fontColor('#666')
+                .onClick(() => { this.cancelRegion(); })
+              Text('请选择所在地区')
+                .fontSize(18)
+                .fontWeight(FontWeight.Medium)
+                .layoutWeight(1)
+                .textAlign(TextAlign.Center)
+              Text('确定')
+                .fontSize(16)
+                .fontColor('#FF4D4F')
+                .onClick(() => { this.confirmRegion(); })
+            }
+            .width('100%')
+            .height(48)
+            .padding({ left: 16, right: 16 })
+
+            Divider().height(1).backgroundColor('#F0F0F0')
+
+            Row() {
+              TextPicker({ range: this.provinces, selected: this.currentProvinceIndex })
+                .layoutWeight(1)
+                .height(200)
+                .onChange((value: string | string[], index: number | number[]) => {
+                  this.onProvinceChange(index as number);
+                })
+
+              TextPicker({ range: this.cities, selected: this.currentCityIndex })
+                .layoutWeight(1)
+                .height(200)
+                .onChange((value: string | string[], index: number | number[]) => {
+                  this.onCityChange(index as number);
+                })
+
+              TextPicker({ range: this.districts, selected: this.currentDistrictIndex })
+                .layoutWeight(1)
+                .height(200)
+                .onChange((value: string | string[], index: number | number[]) => {
+                  this.onDistrictChange(index as number);
+                })
+            }
+            .width('100%')
+          }
+          .width('100%')
+          .backgroundColor(Color.White)
+          .borderRadius({ topLeft: 12, topRight: 12 })
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(0,0,0,0.5)')
+        .justifyContent(FlexAlign.End)
+      }
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F5F5')
   }
 
   @Builder
@@ -311,7 +446,7 @@ struct AddressEdit {
     .padding(16)
     .alignItems(VerticalAlign.Center)
     .onClick(() => {
-      this.selectRegion();
+      this.openRegionPicker();
     })
   }
 
