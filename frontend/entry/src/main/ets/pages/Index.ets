@@ -4,7 +4,7 @@ import { CartService } from '../services/cart/CartService';
 import { OrderService } from '../services/order/OrderService';
 import { UserService } from '../services/user/UserService';
 import { AuthManager } from '../services/auth/AuthManager';
-import { Product, Category, CartItem, Order, OrderItem, User } from '../common/models';
+import { Product, Category, CartItem, Order, OrderItem, User, RecommendationItem } from '../common/models';
 import { ProductCard } from '../components/ProductCard';
 import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
@@ -93,6 +93,9 @@ struct HomeTab {
   @State products: Product[] = [];
   @State categories: Category[] = [];
   @State isLoading: boolean = true;
+  @State isRefreshing: boolean = false;
+  @State recommendations: RecommendationItem[] = [];
+  @State hasRecommendations: boolean = false;
 
   aboutToAppear(): void {
     this.loadData();
@@ -114,17 +117,77 @@ struct HomeTab {
     this.isLoading = false;
   }
 
+  async refreshData(): Promise<void> {
+    this.isRefreshing = true;
+    try {
+      const RecommendationService = (await import('../services/product/RecommendationService')).RecommendationService;
+      const recService = RecommendationService.getInstance();
+      await recService.refreshRecommendations('default_user');
+      
+      const catService: CategoryService = CategoryService.getInstance();
+      const prodService: ProductService = ProductService.getInstance();
+      const cats: Category[] = await catService.getAllCategories();
+      const prods: Product[] = await prodService.getAllProducts();
+      this.categories = cats.filter((c: Category) => !c.parentId);
+      this.products = prods;
+      
+      await this.loadRecommendations();
+    } catch (e) {
+      this.products = [];
+      this.categories = [];
+    }
+    this.isRefreshing = false;
+  }
+
+  async loadRecommendations(): Promise<void> {
+    try {
+      const RecommendationService = (await import('../services/product/RecommendationService')).RecommendationService;
+      const recService = RecommendationService.getInstance();
+      const recs = await recService.getRecommendations('default_user');
+      this.recommendations = recs.slice(0, 6);
+      this.hasRecommendations = this.recommendations.length > 0;
+    } catch (e) {
+      this.recommendations = [];
+      this.hasRecommendations = false;
+    }
+  }
+
   build() {
     Column() {
-      Search({ placeholder: '搜索商品' })
-        .width('100%')
+      Row() {
+        Search({ placeholder: '搜索商品' })
+          .width('85%')
+          .height(40)
+          .backgroundColor('#F0F0F0')
+          .borderRadius(20)
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/SearchPage' });
+          })
+        Column() {
+          if (this.isRefreshing) {
+            LoadingProgress()
+              .width(24)
+              .height(24)
+              .color('#FF4D4F')
+          } else {
+            Text('刷新')
+              .fontSize(12)
+              .fontColor('#FF4D4F')
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+              .borderRadius(12)
+              .backgroundColor('#FFF1F0')
+          }
+        }
+        .width(36)
         .height(40)
-        .backgroundColor('#F0F0F0')
-        .borderRadius(20)
-        .margin({ left: 12, right: 12, top: 36, bottom: 4 })
+        .justifyContent(FlexAlign.Center)
         .onClick(() => {
-          router.pushUrl({ url: 'pages/SearchPage' });
+          if (!this.isRefreshing) {
+            this.refreshData();
+          }
         })
+      }
+      .padding({ left: 12, right: 12, top: 36, bottom: 4 })
 
       Row({ space: 12 }) {
         Text('全部分类')
@@ -175,24 +238,69 @@ struct HomeTab {
         .justifyContent(FlexAlign.Center)
       } else {
         Scroll() {
-          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-            ForEach(this.products, (product: Product) => {
-              ProductCard({
-                product: product,
-                onCardClick: () => {
-                  router.pushUrl({
-                    url: 'pages/ProductDetailPage',
-                    params: { productId: product.productId }
-                  });
+          Column() {
+            if (this.hasRecommendations) {
+              Column() {
+                Row() {
+                  Text('为你推荐')
+                    .fontSize(16)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#333')
+                  Text('点击刷新更新')
+                    .fontSize(12)
+                    .fontColor('#999')
                 }
-              })
-            }, (product: Product) => product.productId)
+                .width('100%')
+                .justifyContent(FlexAlign.SpaceBetween)
+                .padding({ left: 12, right: 12, bottom: 8 })
+
+                Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+                  ForEach(this.recommendations, (rec: RecommendationItem) => {
+                    Column() {
+                      ProductCard({
+                        product: rec.product,
+                        onCardClick: () => {
+                          router.pushUrl({
+                            url: 'pages/ProductDetailPage',
+                            params: { productId: rec.product.productId }
+                          });
+                        }
+                      })
+                      Text(rec.reason)
+                        .fontSize(11)
+                        .fontColor('#999')
+                        .margin({ top: 4 })
+                    }
+                  }, (rec: RecommendationItem) => rec.product.productId)
+                }
+                .padding({ left: 8, right: 8 })
+                .width('100%')
+
+                Divider().width('100%').margin({ top: 12, bottom: 12 })
+              }
+            }
+
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+              ForEach(this.products, (product: Product) => {
+                ProductCard({
+                  product: product,
+                  onCardClick: () => {
+                    router.pushUrl({
+                      url: 'pages/ProductDetailPage',
+                      params: { productId: product.productId }
+                    });
+                  }
+                })
+              }, (product: Product) => product.productId)
+            }
+            .padding({ left: 8, right: 8, top: 8 })
+            .width('100%')
           }
-          .padding({ left: 8, right: 8, top: 8 })
           .width('100%')
         }
         .layoutWeight(1)
         .scrollBar(BarState.Off)
+        
       }
     }
     .width('100%')
@@ -412,7 +520,6 @@ struct OrderTab {
                         .alt($r('app.media.app_icon'))
                       Column() {
                         Text(item.productName)
-                          .fontSize(14)
                           .maxLines(2)
                           .textOverflow({ overflow: TextOverflow.Ellipsis })
                         Text(`¥${item.price}  x${item.quantity}`)
@@ -434,7 +541,6 @@ struct OrderTab {
                     .fontSize(13)
                     .fontColor('#666')
                   Text(`¥${order.totalAmount}`)
-                    .fontSize(15)
                     .fontWeight(FontWeight.Bold)
                     .fontColor('#FF4D4F')
                 }
@@ -486,7 +592,6 @@ struct UserTab {
             }
             Column() {
               Text(this.userData ? this.userData.nickname : '未登录')
-                .fontSize(20)
                 .fontWeight(FontWeight.Bold)
               Text(this.userData ? this.userData.phone : '点击登录')
                 .fontSize(14)
@@ -567,7 +672,6 @@ struct UserTab {
           .borderRadius(12)
 
           Button('退出登录')
-            .fontSize(14)
             .backgroundColor('#FFF1F0')
             .fontColor('#FF4D4F')
             .width('100%')

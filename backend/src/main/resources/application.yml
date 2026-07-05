@@ -31,6 +31,13 @@ spring:
 server:
   port: 8080
 
+cloud:
+  db:
+    project-id: 101653523864447476
+    client-id: 1987754659304988480
+    client-secret: FBA60629FDA9DD7BCA6F5FCCD7F4E32E0B1336B98ECD86B091DA77E6D2495AED
+    zone-name: MainZone
+
 # H2 开发配置（不需要 MySQL 时使用）
 ---
 spring:

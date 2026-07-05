@@ -80,7 +80,7 @@ export class LoginResult {
 export class HttpUtil {
   // 鸿蒙模拟器请改为本机局域网IP（如 192.168.1.100），真机同样用局域网IP
   // localhost 在模拟器中指向模拟器自身，不是宿主机
-  private static readonly BASE_URL: string = 'http://192.168.150.1:8080/api/v1';
+  private static readonly BASE_URL: string = 'http://192.168.208.219:8080/api/v1';
   private static readonly DEFAULT_TIMEOUT: number = 30000;
 
   private static async getToken(): Promise<string> {
