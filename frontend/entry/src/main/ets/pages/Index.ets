@@ -104,6 +104,7 @@ struct HomeTab {
   @State isRefreshing: boolean = false;
   @State recommendations: RecommendationItem[] = [];
   @State hasRecommendations: boolean = false;
+  @State hasMoreRecommendations: boolean = false;
 
   aboutToAppear(): void {
     this.loadData();
@@ -152,7 +153,8 @@ struct HomeTab {
       const RecommendationService = (await import('../services/product/RecommendationService')).RecommendationService;
       const recService = RecommendationService.getInstance();
       const recs = await recService.getRecommendations('default_user');
-      this.recommendations = recs.slice(0, 6);
+      this.hasMoreRecommendations = recs.length > 4;
+      this.recommendations = recs.slice(0, 4);
       this.hasRecommendations = this.recommendations.length > 0;
     } catch (e) {
       this.recommendations = [];
@@ -254,9 +256,18 @@ struct HomeTab {
                     .fontSize(16)
                     .fontWeight(FontWeight.Bold)
                     .fontColor('#333')
-                  Text('点击刷新更新')
-                    .fontSize(12)
-                    .fontColor('#999')
+                  if (this.hasMoreRecommendations) {
+                    Text('更多 ›')
+                      .fontSize(12)
+                      .fontColor('#FF4D4F')
+                      .onClick(() => {
+                        router.pushUrl({ url: 'pages/RecommendationPage' });
+                      })
+                  } else {
+                    Text('点击刷新更新')
+                      .fontSize(12)
+                      .fontColor('#999')
+                  }
                 }
                 .width('100%')
                 .justifyContent(FlexAlign.SpaceBetween)
@@ -264,21 +275,16 @@ struct HomeTab {
 
                 Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
                   ForEach(this.recommendations, (rec: RecommendationItem) => {
-                    Column() {
-                      ProductCard({
-                        product: rec.product,
-                        onCardClick: () => {
-                          router.pushUrl({
-                            url: 'pages/ProductDetailPage',
-                            params: { productId: rec.product.productId }
-                          });
-                        }
-                      })
-                      Text(rec.reason)
-                        .fontSize(11)
-                        .fontColor('#999')
-                        .margin({ top: 4 })
-                    }
+                    ProductCard({
+                      product: rec.product,
+                      showRecommendTag: true,
+                      onCardClick: () => {
+                        router.pushUrl({
+                          url: 'pages/ProductDetailPage',
+                          params: { productId: rec.product.productId }
+                        });
+                      }
+                    })
                   }, (rec: RecommendationItem) => rec.product.productId)
                 }
                 .padding({ left: 8, right: 8 })

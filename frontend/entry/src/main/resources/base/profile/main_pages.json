@@ -14,6 +14,7 @@
     "pages/ProductListPage",
     "pages/SearchPage",
     "pages/SearchResultPage",
-    "pages/NearbyPage"
+    "pages/NearbyPage",
+    "pages/RecommendationPage"
   ]
 }
