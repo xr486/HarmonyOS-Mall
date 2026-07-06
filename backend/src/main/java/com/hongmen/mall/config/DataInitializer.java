@@ -121,6 +121,55 @@ public class DataInitializer implements CommandLineRunner {
                     "cat-1-2", "索尼", now, 3333, 25.8380, 114.9175));
             System.out.println("[DataInitializer] Added product p-8");
         }
+        
+        addProductIfNotExists("p-9", "荣耀Magic6 Pro", "青海湖电池，鹰眼相机，骁龙8 Gen3",
+                4999L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Honor+Magic6+Pro+smartphone+product+photo+white+background&image_size=square",
+                "cat-1-1", "荣耀", now, 6666, 25.8430, 114.9225);
+        
+        addProductIfNotExists("p-10", "OPPO Find X7 Ultra", "双潜望长焦，哈苏影像",
+                5999L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=OPPO+Find+X7+Ultra+smartphone+product+photo+white+background&image_size=square",
+                "cat-1-1", "OPPO", now, 5555, 25.8415, 114.9218);
+        
+        addProductIfNotExists("p-11", "vivo X100 Pro", "蔡司影像，天玑9300",
+                5499L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Vivo+X100+Pro+smartphone+product+photo+white+background&image_size=square",
+                "cat-1-1", "vivo", now, 4444, 25.8398, 114.9195);
+        
+        addProductIfNotExists("p-12", "Apple Watch Ultra 2", "钛金属表壳，精准双频GPS",
+                6499L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Apple+Watch+Ultra+2+smartwatch+product+photo+white+background&image_size=square",
+                "cat-1-2", "苹果", now, 2222, 25.8402, 114.9202);
+        
+        addProductIfNotExists("p-13", "三星Galaxy S24 Ultra", "钛金属边框，AI功能",
+                8999L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Samsung+Galaxy+S24+Ultra+smartphone+product+photo+white+background&image_size=square",
+                "cat-1-1", "三星", now, 3333, 25.8425, 114.9212);
+        
+        addProductIfNotExists("p-14", "联想ThinkPad X1 Carbon", "轻薄商务本，OLED屏幕",
+                9999L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Lenovo+ThinkPad+X1+Carbon+laptop+product+photo+white+background&image_size=square",
+                "cat-2", "联想", now, 2222, 25.8385, 114.9182);
+        
+        addProductIfNotExists("p-15", "戴森V15 Detect", "激光探测灰尘，声学感应",
+                5499L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Dyson+V15+Detect+vacuum+cleaner+product+photo+white+background&image_size=square",
+                "cat-3", "戴森", now, 1111, 25.8412, 114.9208);
+        
+        addProductIfNotExists("p-16", "AirPods Pro 2", "H2芯片，自适应降噪",
+                1899L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Apple+AirPods+Pro+2+earbuds+product+photo+white+background&image_size=square",
+                "cat-1-2", "苹果", now, 9999, 25.8392, 114.9192);
+        
+        addProductIfNotExists("p-17", "iPad Pro 12.9", "M2芯片，Liquid Retina XDR",
+                8499L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=iPad+Pro+12.9+tablet+product+photo+white+background&image_size=square",
+                "cat-2", "苹果", now, 4444, 25.8407, 114.9207);
+        
+        addProductIfNotExists("p-18", "美的洗衣机 10KG", "洗烘一体，变频节能",
+                2999L, "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Midea+washing+machine+product+photo+white+background&image_size=square",
+                "cat-3", "美的", now, 5555, 25.8388, 114.9188);
+    }
+    
+    private void addProductIfNotExists(String id, String name, String desc, long price,
+                                       String image, String catId, String brand, long time,
+                                       int sales, Double latitude, Double longitude) {
+        if (productRepository.findById(id).isEmpty()) {
+            productRepository.save(createProduct(id, name, desc, price, image, catId, brand, time, sales, latitude, longitude));
+            System.out.println("[DataInitializer] Added product " + id);
+        }
     }
 
     private Category createCategory(String id, String name, String parentId, int sort, long time) {

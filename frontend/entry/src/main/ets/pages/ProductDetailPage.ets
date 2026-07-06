@@ -2,6 +2,7 @@ import { ProductService } from '../services/product/ProductService';
 import { CartService } from '../services/cart/CartService';
 import { Product } from '../common/models';
 import router from '@ohos.router';
+import promptAction from '@ohos.promptAction';
 
 @Entry
 @Component
@@ -37,7 +38,7 @@ struct ProductDetailPage {
     }
     try {
       const cartService: CartService = CartService.getInstance();
-      await cartService.addToCart({
+      const success: boolean = await cartService.addToCart({
         cartId: `cart_${Date.now()}`,
         userId: 'default_user',
         productId: this.product.productId,
@@ -49,8 +50,13 @@ struct ProductDetailPage {
         stock: this.product.stock,
         addedAt: Date.now()
       });
+      if (success) {
+        promptAction.showToast({ message: '已加入购物车' });
+      } else {
+        promptAction.showToast({ message: '加入失败，请重试' });
+      }
     } catch (e) {
-      // silently fail
+      promptAction.showToast({ message: '网络异常，请重试' });
     }
   }
 
@@ -158,26 +164,44 @@ struct ProductDetailPage {
           Row() {
             Text('数量')
               .fontSize(14)
-            Button('-')
-              .width(32)
-              .height(32)
-              .fontSize(18)
-              .onClick(() => {
-                if (this.quantity > 1) { this.quantity--; }
-              })
-            Text(this.quantity.toString())
-              .fontSize(16)
-              .width(40)
-              .textAlign(TextAlign.Center)
-            Button('+')
-              .width(32)
-              .height(32)
-              .fontSize(18)
-              .onClick(() => {
-                if (this.quantity < (this.product ? this.product.stock : 99)) {
-                  this.quantity++;
-                }
-              })
+              .fontColor('#333')
+
+            // 数量调整器
+            Row() {
+              Text('-')
+                .fontSize(16)
+                .fontColor('#666')
+                .width(32)
+                .height(32)
+                .textAlign(TextAlign.Center)
+                .borderRadius(4)
+                .backgroundColor('#F5F5F5')
+                .onClick(() => {
+                  if (this.quantity > 1) { this.quantity--; }
+                })
+
+              Text(this.quantity.toString())
+                .fontSize(15)
+                .fontColor('#333')
+                .width(44)
+                .height(32)
+                .textAlign(TextAlign.Center)
+
+              Text('+')
+                .fontSize(16)
+                .fontColor('#666')
+                .width(32)
+                .height(32)
+                .textAlign(TextAlign.Center)
+                .borderRadius(4)
+                .backgroundColor('#F5F5F5')
+                .onClick(() => {
+                  if (this.quantity < (this.product ? this.product.stock : 99)) {
+                    this.quantity++;
+                  }
+                })
+            }
+            .border({ width: 1, color: '#E0E0E0', radius: 6 })
           }
 
           Button('加入购物车')

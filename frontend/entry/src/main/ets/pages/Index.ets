@@ -4,7 +4,7 @@ import { CartService } from '../services/cart/CartService';
 import { OrderService } from '../services/order/OrderService';
 import { UserService } from '../services/user/UserService';
 import { AuthManager } from '../services/auth/AuthManager';
-import { Product, Category, CartItem, Order, OrderItem, User } from '../common/models';
+import { Product, Category, CartItem, Order, OrderItem, User, RecommendationItem } from '../common/models';
 import { ProductCard } from '../components/ProductCard';
 import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
@@ -14,6 +14,7 @@ import promptAction from '@ohos.promptAction';
 struct Index {
   @State currentTabIndex: number = 0;
   @State tabUser: User | null = null;
+  @State cartRefreshKey: number = 0;
   private tabTitles: string[] = ['首页', '购物车', '订单', '我的'];
 
   aboutToAppear(): void {
@@ -22,6 +23,13 @@ struct Index {
 
   onPageShow(): void {
     this.loadTabUser();
+  }
+
+  onTabChange(index: number): void {
+    if (index === 1) {
+      this.cartRefreshKey++;
+    }
+    this.currentTabIndex = index;
   }
 
   async loadTabUser(): Promise<void> {
@@ -47,7 +55,7 @@ struct Index {
       .tabBar(this.TabBuilder(0))
 
       TabContent() {
-        CartTab()
+        CartTab({ refreshKey: this.cartRefreshKey })
       }
       .tabBar(this.TabBuilder(1))
 
@@ -62,7 +70,7 @@ struct Index {
       .tabBar(this.TabBuilder(3))
     }
     .onChange((index: number) => {
-      this.currentTabIndex = index;
+      this.onTabChange(index);
     })
     .barHeight(56)
     .width('100%')
@@ -93,6 +101,10 @@ struct HomeTab {
   @State products: Product[] = [];
   @State categories: Category[] = [];
   @State isLoading: boolean = true;
+  @State isRefreshing: boolean = false;
+  @State recommendations: RecommendationItem[] = [];
+  @State hasRecommendations: boolean = false;
+  @State hasMoreRecommendations: boolean = false;
 
   aboutToAppear(): void {
     this.loadData();
@@ -114,17 +126,78 @@ struct HomeTab {
     this.isLoading = false;
   }
 
+  async refreshData(): Promise<void> {
+    this.isRefreshing = true;
+    try {
+      const RecommendationService = (await import('../services/product/RecommendationService')).RecommendationService;
+      const recService = RecommendationService.getInstance();
+      await recService.refreshRecommendations('default_user');
+      
+      const catService: CategoryService = CategoryService.getInstance();
+      const prodService: ProductService = ProductService.getInstance();
+      const cats: Category[] = await catService.getAllCategories();
+      const prods: Product[] = await prodService.getAllProducts();
+      this.categories = cats.filter((c: Category) => !c.parentId);
+      this.products = prods;
+      
+      await this.loadRecommendations();
+    } catch (e) {
+      this.products = [];
+      this.categories = [];
+    }
+    this.isRefreshing = false;
+  }
+
+  async loadRecommendations(): Promise<void> {
+    try {
+      const RecommendationService = (await import('../services/product/RecommendationService')).RecommendationService;
+      const recService = RecommendationService.getInstance();
+      const recs = await recService.getRecommendations('default_user');
+      this.hasMoreRecommendations = recs.length > 4;
+      this.recommendations = recs.slice(0, 4);
+      this.hasRecommendations = this.recommendations.length > 0;
+    } catch (e) {
+      this.recommendations = [];
+      this.hasRecommendations = false;
+    }
+  }
+
   build() {
     Column() {
-      Search({ placeholder: '搜索商品' })
-        .width('100%')
+      Row() {
+        Search({ placeholder: '搜索商品' })
+          .width('85%')
+          .height(40)
+          .backgroundColor('#F0F0F0')
+          .borderRadius(20)
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/SearchPage' });
+          })
+        Column() {
+          if (this.isRefreshing) {
+            LoadingProgress()
+              .width(24)
+              .height(24)
+              .color('#FF4D4F')
+          } else {
+            Text('刷新')
+              .fontSize(12)
+              .fontColor('#FF4D4F')
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+              .borderRadius(12)
+              .backgroundColor('#FFF1F0')
+          }
+        }
+        .width(36)
         .height(40)
-        .backgroundColor('#F0F0F0')
-        .borderRadius(20)
-        .margin({ left: 12, right: 12, top: 36, bottom: 4 })
+        .justifyContent(FlexAlign.Center)
         .onClick(() => {
-          router.pushUrl({ url: 'pages/SearchPage' });
+          if (!this.isRefreshing) {
+            this.refreshData();
+          }
         })
+      }
+      .padding({ left: 12, right: 12, top: 36, bottom: 4 })
 
       Row({ space: 12 }) {
         Text('全部分类')
@@ -175,24 +248,73 @@ struct HomeTab {
         .justifyContent(FlexAlign.Center)
       } else {
         Scroll() {
-          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-            ForEach(this.products, (product: Product) => {
-              ProductCard({
-                product: product,
-                onCardClick: () => {
-                  router.pushUrl({
-                    url: 'pages/ProductDetailPage',
-                    params: { productId: product.productId }
-                  });
+          Column() {
+            if (this.hasRecommendations) {
+              Column() {
+                Row() {
+                  Text('为你推荐')
+                    .fontSize(16)
+                    .fontWeight(FontWeight.Bold)
+                    .fontColor('#333')
+                  if (this.hasMoreRecommendations) {
+                    Text('更多 ›')
+                      .fontSize(12)
+                      .fontColor('#FF4D4F')
+                      .onClick(() => {
+                        router.pushUrl({ url: 'pages/RecommendationPage' });
+                      })
+                  } else {
+                    Text('点击刷新更新')
+                      .fontSize(12)
+                      .fontColor('#999')
+                  }
                 }
-              })
-            }, (product: Product) => product.productId)
+                .width('100%')
+                .justifyContent(FlexAlign.SpaceBetween)
+                .padding({ left: 12, right: 12, bottom: 8 })
+
+                Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+                  ForEach(this.recommendations, (rec: RecommendationItem) => {
+                    ProductCard({
+                      product: rec.product,
+                      showRecommendTag: true,
+                      onCardClick: () => {
+                        router.pushUrl({
+                          url: 'pages/ProductDetailPage',
+                          params: { productId: rec.product.productId }
+                        });
+                      }
+                    })
+                  }, (rec: RecommendationItem) => rec.product.productId)
+                }
+                .padding({ left: 8, right: 8 })
+                .width('100%')
+
+                Divider().width('100%').margin({ top: 12, bottom: 12 })
+              }
+            }
+
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+              ForEach(this.products, (product: Product) => {
+                ProductCard({
+                  product: product,
+                  onCardClick: () => {
+                    router.pushUrl({
+                      url: 'pages/ProductDetailPage',
+                      params: { productId: product.productId }
+                    });
+                  }
+                })
+              }, (product: Product) => product.productId)
+            }
+            .padding({ left: 8, right: 8, top: 8 })
+            .width('100%')
           }
-          .padding({ left: 8, right: 8, top: 8 })
           .width('100%')
         }
         .layoutWeight(1)
         .scrollBar(BarState.Off)
+        
       }
     }
     .width('100%')
@@ -201,12 +323,45 @@ struct HomeTab {
   }
 }
 
+function cloneCartItem(
+  src: CartItem,
+  newSelected?: boolean,
+  newQuantity?: number
+): CartItem {
+  const out: CartItem = {
+    cartId: src.cartId,
+    userId: src.userId,
+    productId: src.productId,
+    productName: src.productName,
+    productImage: src.productImage,
+    price: src.price,
+    quantity: src.quantity,
+    selected: src.selected,
+    stock: src.stock,
+    addedAt: src.addedAt
+  };
+  if (newSelected !== undefined) { out.selected = newSelected; }
+  if (newQuantity !== undefined) { out.quantity = newQuantity; }
+  return out;
+}
+
 @Component
 struct CartTab {
+  @Link @Watch('onRefreshKeyChange') refreshKey: number;
   @State cartItems: CartItem[] = [];
   @State isLoading: boolean = true;
+  @State allSelected: boolean = true;
+  @State isEditing: boolean = false;
+  private isInitialized: boolean = false;
+
+  onRefreshKeyChange(): void {
+    if (this.isInitialized) {
+      this.loadCart();
+    }
+  }
 
   aboutToAppear(): void {
+    this.isInitialized = true;
     this.loadCart();
   }
 
@@ -216,30 +371,438 @@ struct CartTab {
       const service: CartService = CartService.getInstance();
       const items: CartItem[] = await service.getCartItems('default_user');
       this.cartItems = items;
+      this.updateAllSelected();
     } catch (e) {
       this.cartItems = [];
     }
     this.isLoading = false;
   }
 
+  updateAllSelected(): void {
+    if (this.cartItems.length === 0) {
+      this.allSelected = false;
+      return;
+    }
+    let all: boolean = true;
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      if (!this.cartItems[i].selected) {
+        all = false;
+        break;
+      }
+    }
+    this.allSelected = all;
+  }
+
+  async toggleAllSelected(): Promise<void> {
+    const newChecked: boolean = !this.allSelected;
+    const newItems: CartItem[] = [];
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      newItems.push(cloneCartItem(this.cartItems[i], newChecked));
+    }
+    this.cartItems = newItems;
+    this.allSelected = newChecked;
+
+    const service: CartService = CartService.getInstance();
+    const cartIds: string[] = [];
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      cartIds.push(this.cartItems[i].cartId);
+    }
+    const success: boolean = await service.selectAll(cartIds, newChecked);
+    if (!success) {
+      const rollback: CartItem[] = [];
+      for (let i: number = 0; i < this.cartItems.length; i++) {
+        rollback.push(cloneCartItem(this.cartItems[i], !newChecked));
+      }
+      this.cartItems = rollback;
+      this.allSelected = !newChecked;
+      promptAction.showToast({ message: '网络异常，请重试' });
+    }
+  }
+
+  async toggleItem(cartId: string): Promise<void> {
+    let target: CartItem | null = null;
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      if (this.cartItems[i].cartId === cartId) {
+        target = this.cartItems[i];
+        break;
+      }
+    }
+    if (!target) return;
+    const newChecked: boolean = !target.selected;
+
+    const newItems: CartItem[] = [];
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      const it: CartItem = this.cartItems[i];
+      if (it.cartId === cartId) {
+        newItems.push(cloneCartItem(it, newChecked));
+      } else {
+        newItems.push(cloneCartItem(it));
+      }
+    }
+    this.cartItems = newItems;
+    this.updateAllSelected();
+
+    const service: CartService = CartService.getInstance();
+    const success: boolean = await service.updateCartItemChecked(cartId, newChecked);
+    if (!success) {
+      const rollback: CartItem[] = [];
+      for (let i: number = 0; i < this.cartItems.length; i++) {
+        const it: CartItem = this.cartItems[i];
+        if (it.cartId === cartId) {
+          rollback.push(cloneCartItem(it, !newChecked));
+        } else {
+          rollback.push(cloneCartItem(it));
+        }
+      }
+      this.cartItems = rollback;
+      this.updateAllSelected();
+      promptAction.showToast({ message: '网络异常，请重试' });
+    }
+  }
+
+  async changeQuantity(cartId: string, delta: number): Promise<void> {
+    let target: CartItem | null = null;
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      if (this.cartItems[i].cartId === cartId) {
+        target = this.cartItems[i];
+        break;
+      }
+    }
+    if (!target) return;
+
+    const newQty: number = target.quantity + delta;
+    if (newQty < 1) {
+      promptAction.showToast({ message: '数量不能小于1' });
+      return;
+    }
+    const maxStock: number = target.stock ?? 99;
+    if (newQty > maxStock) {
+      promptAction.showToast({ message: `库存仅剩 ${maxStock} 件` });
+      return;
+    }
+
+    const newItems: CartItem[] = [];
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      const it: CartItem = this.cartItems[i];
+      if (it.cartId === cartId) {
+        newItems.push(cloneCartItem(it, undefined, newQty));
+      } else {
+        newItems.push(cloneCartItem(it));
+      }
+    }
+    this.cartItems = newItems;
+
+    const service: CartService = CartService.getInstance();
+    const success: boolean = await service.updateCartItemQuantity(cartId, newQty);
+    if (!success) {
+      const rollback: CartItem[] = [];
+      for (let i: number = 0; i < this.cartItems.length; i++) {
+        const it: CartItem = this.cartItems[i];
+        if (it.cartId === cartId) {
+          rollback.push(cloneCartItem(it, undefined, target.quantity));
+        } else {
+          rollback.push(cloneCartItem(it));
+        }
+      }
+      this.cartItems = rollback;
+      promptAction.showToast({ message: '网络异常，请重试' });
+    }
+  }
+
+  async deleteItem(cartId: string): Promise<void> {
+    const service: CartService = CartService.getInstance();
+    const success: boolean = await service.removeFromCart(cartId);
+    if (success) {
+      const newItems: CartItem[] = [];
+      for (let i: number = 0; i < this.cartItems.length; i++) {
+        if (this.cartItems[i].cartId !== cartId) {
+          newItems.push(cloneCartItem(this.cartItems[i]));
+        }
+      }
+      this.cartItems = newItems;
+      this.updateAllSelected();
+      promptAction.showToast({ message: '已删除' });
+    } else {
+      promptAction.showToast({ message: '删除失败，请重试' });
+    }
+  }
+
+  async deleteSelected(): Promise<void> {
+    const selectedIds: string[] = [];
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      if (this.cartItems[i].selected) {
+        selectedIds.push(this.cartItems[i].cartId);
+      }
+    }
+    if (selectedIds.length === 0) {
+      promptAction.showToast({ message: '请先选择要删除的商品' });
+      return;
+    }
+
+    const service: CartService = CartService.getInstance();
+    let successCount: number = 0;
+    for (let i: number = 0; i < selectedIds.length; i++) {
+      const ok: boolean = await service.removeFromCart(selectedIds[i]);
+      if (ok) successCount++;
+    }
+    await this.loadCart();
+    this.isEditing = false;
+    promptAction.showToast({ message: `已删除 ${successCount} 件商品` });
+  }
+
   getTotalPrice(): number {
     let total: number = 0;
     for (let i: number = 0; i < this.cartItems.length; i++) {
-      total += this.cartItems[i].price * this.cartItems[i].quantity;
+      if (this.cartItems[i].selected) {
+        total += this.cartItems[i].price * this.cartItems[i].quantity;
+      }
     }
     return total;
   }
 
+  getSelectedCount(): number {
+    let count: number = 0;
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      if (this.cartItems[i].selected) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  getSelectedItemCount(): number {
+    let count: number = 0;
+    for (let i: number = 0; i < this.cartItems.length; i++) {
+      if (this.cartItems[i].selected) {
+        count += this.cartItems[i].quantity;
+      }
+    }
+    return count;
+  }
+
+  goToDetail(productId: string): void {
+    router.pushUrl({
+      url: 'pages/ProductDetailPage',
+      params: { productId: productId }
+    });
+  }
+
+  @Builder
+  CartItemCard(item: CartItem) {
+    Row() {
+      Checkbox({ name: item.cartId })
+        .select(item.selected)
+        .shape(CheckBoxShape.ROUNDED_SQUARE)
+        .selectedColor('#FF4D4F')
+        .onChange((value: boolean) => {
+          if (value !== item.selected) {
+            this.toggleItem(item.cartId);
+          }
+        })
+        .margin({ right: 8 })
+
+      Image(item.productImage || '')
+        .width(80)
+        .height(80)
+        .objectFit(ImageFit.Cover)
+        .borderRadius(8)
+        .alt($r('app.media.app_icon'))
+        .onClick(() => this.goToDetail(item.productId))
+
+      Column() {
+        Column() {
+          Text(item.productName)
+            .fontSize(14)
+            .fontColor('#333')
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .width('100%')
+            .onClick(() => this.goToDetail(item.productId))
+
+          if (item.specs && item.specs.length > 0) {
+            Text(item.specs)
+              .fontSize(12)
+              .fontColor('#999')
+              .margin({ top: 4 })
+              .width('100%')
+          }
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+
+        Row() {
+          Text(`¥${item.price}`)
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FF4D4F')
+
+          if (this.isEditing) {
+            Text('删除')
+              .fontSize(12)
+              .fontColor('#FF4D4F')
+              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+              .border({ width: 1, color: '#FF4D4F', radius: 14 })
+              .onClick(() => this.deleteItem(item.cartId))
+          } else {
+            Row() {
+              Text('-')
+                .fontSize(14)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(item.quantity <= 1 ? '#CCC' : '#666')
+                .width(26)
+                .height(26)
+                .textAlign(TextAlign.Center)
+                .border({
+                  width: { left: 1, top: 1, bottom: 1 },
+                  color: '#E0E0E0',
+                  radius: { topLeft: 4, bottomLeft: 4 }
+                })
+                .backgroundColor('#FAFAFA')
+                .onClick(() => this.changeQuantity(item.cartId, -1))
+
+              Text(`${item.quantity}`)
+                .fontSize(13)
+                .fontColor('#333')
+                .width(32)
+                .height(26)
+                .textAlign(TextAlign.Center)
+                .border({ width: { top: 1, bottom: 1 }, color: '#E0E0E0' })
+                .backgroundColor('#FAFAFA')
+
+              Text('+')
+                .fontSize(14)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#666')
+                .width(26)
+                .height(26)
+                .textAlign(TextAlign.Center)
+                .border({
+                  width: { right: 1, top: 1, bottom: 1 },
+                  color: '#E0E0E0',
+                  radius: { topRight: 4, bottomRight: 4 }
+                })
+                .backgroundColor('#FAFAFA')
+                .onClick(() => this.changeQuantity(item.cartId, 1))
+            }
+          }
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.SpaceBetween)
+        .alignItems(VerticalAlign.Center)
+      }
+      .layoutWeight(1)
+      .height(80)
+      .margin({ left: 10 })
+      .alignItems(HorizontalAlign.Start)
+      .justifyContent(FlexAlign.SpaceBetween)
+    }
+    .width('100%')
+    .padding({ left: 8, right: 8, top: 0, bottom: 6 })
+    .backgroundColor(Color.White)
+    .borderRadius(10)
+    .margin({ left: 8, right: 8, bottom: 6 })
+    .alignItems(VerticalAlign.Top)
+  }
+
+  @Builder
+  BottomBar() {
+    Column() {
+      Divider().color('#EEE').strokeWidth(1)
+
+      Row() {
+        Row() {
+          Checkbox({ name: 'all', group: 'cart' })
+            .select(this.allSelected)
+            .shape(CheckBoxShape.ROUNDED_SQUARE)
+            .selectedColor('#FF4D4F')
+            .onClick(() => { this.toggleAllSelected(); })
+          Text('全选')
+            .fontSize(14)
+            .fontColor('#333')
+            .margin({ left: 6 })
+        }
+        .onClick(() => this.toggleAllSelected())
+        .height(44)
+        .alignItems(VerticalAlign.Center)
+
+        Blank()
+
+        if (this.isEditing) {
+          Button(`删除(${this.getSelectedCount()})`)
+            .fontSize(14)
+            .backgroundColor(this.getSelectedCount() > 0 ? '#FF4D4F' : '#CCC')
+            .fontColor(Color.White)
+            .borderRadius(18)
+            .height(34)
+            .width(100)
+            .enabled(this.getSelectedCount() > 0)
+            .onClick(() => this.deleteSelected())
+        } else {
+          Column() {
+            Row() {
+              Text('合计: ')
+                .fontSize(13)
+                .fontColor('#333')
+              Text(`¥${this.getTotalPrice()}`)
+                .fontSize(17)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#FF4D4F')
+            }
+
+            if (this.getSelectedItemCount() > 0) {
+              Text(`共 ${this.getSelectedItemCount()} 件`)
+                .fontSize(11)
+                .fontColor('#999')
+                .margin({ top: 2 })
+            }
+          }
+          .alignItems(HorizontalAlign.End)
+          .margin({ right: 16 })
+
+          Button(`结算(${this.getSelectedCount()})`)
+            .fontSize(14)
+            .backgroundColor(this.getSelectedCount() > 0 ? '#FF4D4F' : '#FFB3B3')
+            .fontColor(Color.White)
+            .borderRadius(20)
+            .height(38)
+            .width(88)
+            .enabled(this.getSelectedCount() > 0)
+            .onClick(() => {
+              if (this.getSelectedCount() > 0) {
+                router.pushUrl({ url: 'pages/OrderListPage' });
+              }
+            })
+        }
+      }
+      .width('100%')
+      .height(56)
+      .padding({ left: 16, right: 12 })
+    }
+    .width('100%')
+    .backgroundColor(Color.White)
+  }
+
   build() {
     Column() {
-      Text('购物车')
-        .fontSize(18)
-        .fontWeight(FontWeight.Medium)
-        .width('100%')
-        .height(48)
-        .textAlign(TextAlign.Center)
-        .backgroundColor(Color.White)
-        .padding({ top: 36 })
+      Row() {
+        Text('购物车')
+          .fontSize(18)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#333')
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+
+        Text(this.isEditing ? '完成' : '编辑')
+          .fontSize(14)
+          .fontColor('#FF4D4F')
+          .padding({ left: 8, right: 8 })
+          .height(28)
+          .onClick(() => { this.isEditing = !this.isEditing; })
+      }
+      .width('100%')
+      .height(48)
+      .padding({ left: 16, right: 16 })
+      .backgroundColor(Color.White)
 
       if (this.isLoading) {
         Column() {
@@ -251,79 +814,35 @@ struct CartTab {
         .justifyContent(FlexAlign.Center)
       } else if (this.cartItems.length === 0) {
         Column() {
-          Text('购物车是空的').fontSize(16).fontColor('#999')
-          Text('快去逛逛吧').fontSize(14).fontColor('#999').margin({ top: 8 })
+          Text('🛒')
+            .fontSize(64)
+            .margin({ bottom: 16 })
+          Text('购物车是空的').fontSize(16).fontColor('#333').fontWeight(FontWeight.Medium)
+          Text('快去挑选心仪的商品吧~').fontSize(13).fontColor('#999').margin({ top: 6 })
         }
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
       } else {
         Scroll() {
           Column() {
-            ForEach(this.cartItems, (item: CartItem) => {
-              Row() {
-                if (item.productImage) {
-                  Image(item.productImage)
-                    .width(80)
-                    .height(80)
-                    .borderRadius(6)
-                    .alt($r('app.media.app_icon'))
-                } else {
-                  Column().width(80).height(80).borderRadius(6).backgroundColor('#F0F0F0')
-                }
-                Column() {
-                  Text(item.productName)
-                    .fontSize(14)
-                    .maxLines(2)
-                    .textOverflow({ overflow: TextOverflow.Ellipsis })
-                  Row() {
-                    Text(`¥${item.price}`)
-                      .fontSize(16)
-                      .fontWeight(FontWeight.Bold)
-                      .fontColor('#FF4D4F')
-                    Text(`x${item.quantity}`)
-                      .fontSize(13)
-                      .fontColor('#999')
-                  }
-                  .width('100%')
-                  .margin({ top: 8 })
-                  .justifyContent(FlexAlign.SpaceBetween)
-                }
-                .layoutWeight(1)
-                .margin({ left: 10 })
-                .alignItems(HorizontalAlign.Start)
-              }
-              .width('100%')
-              .padding(12)
-              .backgroundColor(Color.White)
-              .borderRadius(8)
-              .margin({ bottom: 8 })
-            }, (item: CartItem) => item.cartId)
+            ForEach(this.cartItems, (item: CartItem, index: number) => {
+              this.CartItemCard(item)
+            }, (item: CartItem, index: number) => item.cartId + '_' + item.selected + '_' + item.quantity + '_' + index)
           }
-          .padding(12)
+          .padding(0)
           .width('100%')
+          .height('100%')
+          .justifyContent(FlexAlign.Start)
+          .alignItems(HorizontalAlign.Start)
         }
         .layoutWeight(1)
         .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.None)
         .backgroundColor('#F5F5F5')
 
-        Row() {
-          Text(`合计: ¥${this.getTotalPrice()}`)
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#FF4D4F')
-            .layoutWeight(1)
-
-          Button('去结算')
-            .fontSize(14)
-            .backgroundColor('#FF4D4F')
-            .borderRadius(20)
-            .height(36)
-        }
-        .width('100%')
-        .height(56)
-        .padding({ left: 16, right: 16 })
-        .backgroundColor(Color.White)
+        this.BottomBar()
       }
     }
     .width('100%')
@@ -412,7 +931,6 @@ struct OrderTab {
                         .alt($r('app.media.app_icon'))
                       Column() {
                         Text(item.productName)
-                          .fontSize(14)
                           .maxLines(2)
                           .textOverflow({ overflow: TextOverflow.Ellipsis })
                         Text(`¥${item.price}  x${item.quantity}`)
@@ -434,7 +952,6 @@ struct OrderTab {
                     .fontSize(13)
                     .fontColor('#666')
                   Text(`¥${order.totalAmount}`)
-                    .fontSize(15)
                     .fontWeight(FontWeight.Bold)
                     .fontColor('#FF4D4F')
                 }
@@ -486,7 +1003,6 @@ struct UserTab {
             }
             Column() {
               Text(this.userData ? this.userData.nickname : '未登录')
-                .fontSize(20)
                 .fontWeight(FontWeight.Bold)
               Text(this.userData ? this.userData.phone : '点击登录')
                 .fontSize(14)
@@ -567,7 +1083,6 @@ struct UserTab {
           .borderRadius(12)
 
           Button('退出登录')
-            .fontSize(14)
             .backgroundColor('#FFF1F0')
             .fontColor('#FF4D4F')
             .width('100%')

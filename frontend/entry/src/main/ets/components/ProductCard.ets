@@ -4,19 +4,34 @@ import { LazyImage } from './LazyImage';
 @Component
 export struct ProductCard {
   @Prop product: Product;
+  @Prop showRecommendTag: boolean = false;
   onCardClick?: () => void;
 
   build() {
     Column() {
       Column() {
-        LazyImage({
-          src: this.product.images && this.product.images.length > 0 ? this.product.images[0] : '',
-          imgWidth: '100%',
-          imgHeight: 160,
-          objectFit: ImageFit.Cover,
-          imgBorderRadius: 8,
-          alt: $r('app.media.app_icon')
-        })
+        Stack({ alignContent: Alignment.TopStart }) {
+          LazyImage({
+            src: this.product.images && this.product.images.length > 0 ? this.product.images[0] : '',
+            imgWidth: '100%',
+            imgHeight: 160,
+            objectFit: ImageFit.Cover,
+            imgBorderRadius: 8,
+            alt: $r('app.media.app_icon')
+          })
+
+          if (this.showRecommendTag) {
+            Text('推荐')
+              .fontSize(10)
+              .fontColor(Color.White)
+              .backgroundColor('#FF4D4F')
+              .padding({ left: 5, right: 5, top: 2, bottom: 2 })
+              .borderRadius({ topLeft: 8, bottomRight: 6 })
+              .margin({ left: 4, top: 4 })
+          }
+        }
+        .width('100%')
+        .height(160)
 
         Column() {
           Text(this.product.name)

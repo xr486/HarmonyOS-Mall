@@ -4,7 +4,10 @@ package com.hongmen.mall.controller;
 import com.hongmen.mall.common.Result;
 import com.hongmen.mall.entity.Product;
 import com.hongmen.mall.repository.ProductRepository;
+import com.hongmen.mall.service.BrowsingRecordService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +20,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductController {
 
+    private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
+
     private final ProductRepository productRepository;
+    private final BrowsingRecordService browsingRecordService;
 
     /**
      * 获取所有商品
@@ -37,11 +43,36 @@ public class ProductController {
 
     /**
      * 获取商品详情
+     * 自动记录浏览记录（userId 通过请求头或 URL 参数传递）
      */
     @GetMapping("/{id}")
-    public Result<Product> getProductById(@PathVariable String id) {
+    public Result<Product> getProductById(@PathVariable String id, 
+                                          @RequestHeader(value = "X-User-Id", required = false) String userIdFromHeader,
+                                          @RequestParam(value = "userId", required = false) String userIdFromParam) {
         return productRepository.findById(id)
-                .map(Result::success)
+                .map(product -> {
+                    String userId = userIdFromParam != null && !userIdFromParam.isEmpty() 
+                            ? userIdFromParam 
+                            : userIdFromHeader;
+                    
+                    if (userId == null || userId.isEmpty()) {
+                        userId = "default_user";
+                    }
+                    
+                    try {
+                        browsingRecordService.recordBrowsing(
+                            userId,
+                            product.getProductId(),
+                            product.getName(),
+                            product.getImages(),
+                            product.getPrice() != null ? product.getPrice().doubleValue() / 100 : null
+                        );
+                    } catch (Exception e) {
+                        logger.warn("Failed to record browsing for user {} product {}: {}", userId, id, e.getMessage());
+                    }
+                    
+                    return Result.success(product);
+                })
                 .orElse(Result.error(404, "商品不存在"));
     }
 
