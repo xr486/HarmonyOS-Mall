@@ -93,11 +93,18 @@ export class OrderService {
     return 'pending_payment';
   }
 
-  async getAllOrders(userId: string, status?: number): Promise<Order[]> {
+  async getAllOrders(userId: string, status?: number, keyword?: string): Promise<Order[]> {
     try {
       let url: string = '/orders';
+      const params: string[] = [];
       if (status !== undefined && status !== null) {
-        url = url + '?status=' + this.statusToString(status);
+        params.push('status=' + this.statusToString(status));
+      }
+      if (keyword && keyword.trim().length > 0) {
+        params.push('keyword=' + encodeURIComponent(keyword.trim()));
+      }
+      if (params.length > 0) {
+        url = url + '?' + params.join('&');
       }
       const res: ApiResponse<Object[]> = await HttpUtil.get(url);
       if (res.code === 200 && res.data) {
