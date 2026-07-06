@@ -124,6 +124,12 @@ struct OrderDetailPage {
     });
   }
 
+  goToReview(): void {
+    if (!this.order) return;
+    promptAction.showToast({ message: '评价功能开发中，感谢您的耐心等待' });
+    // TODO: 跳转到评价页面
+  }
+
   @Builder
   NavBar() {
     Row() {
@@ -461,8 +467,10 @@ struct OrderDetailPage {
         .backgroundColor('#F5F5F5')
 
         if (this.order.status === OrderStatus.PENDING_PAYMENT ||
-            this.order.status === OrderStatus.PENDING_RECEIPT) {
+            this.order.status === OrderStatus.PENDING_RECEIPT ||
+            this.order.status === OrderStatus.COMPLETED) {
           Row() {
+            if (this.order.status === OrderStatus.PENDING_PAYMENT) {
             if (this.order.status === OrderStatus.PENDING_PAYMENT) {
               Button('取消订单')
                 .fontSize(14)
@@ -475,7 +483,8 @@ struct OrderDetailPage {
                 .onClick(() => this.cancelOrder())
             }
 
-            Button(this.order.status === OrderStatus.PENDING_PAYMENT ? '立即付款' : '确认收货')
+            Button(this.order.status === OrderStatus.PENDING_PAYMENT ? '立即付款' :
+              (this.order.status === OrderStatus.COMPLETED ? '去评价' : '确认收货'))
               .fontSize(14)
               .backgroundColor('#FF4D4F')
               .fontColor(Color.White)
@@ -485,6 +494,8 @@ struct OrderDetailPage {
               .onClick(() => {
                 if (this.order!.status === OrderStatus.PENDING_PAYMENT) {
                   this.goToPayment();
+                } else if (this.order!.status === OrderStatus.COMPLETED) {
+                  this.goToReview();
                 } else {
                   this.confirmReceipt();
                 }
