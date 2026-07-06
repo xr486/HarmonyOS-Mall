@@ -156,6 +156,7 @@ struct FavoritePage {
         .layoutWeight(1)
         .scrollBar(BarState.Off)
         .backgroundColor('#F5F5F5')
+        .align(Alignment.Top)
       }
     }
     .width('100%')

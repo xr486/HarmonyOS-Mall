@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * 订单超时自动取消定时任务
- * 每分钟扫描一次，将超过30分钟未支付的待付款订单自动取消，并恢复商品库存
+ * 每10秒扫描一次，将超过30秒未支付的待付款订单标记为已超时，并恢复商品库存
  */
 @Component
 @RequiredArgsConstructor
@@ -30,9 +30,9 @@ public class OrderTimeoutScheduler {
     private final ProductRepository productRepository;
 
     /**
-     * 每分钟执行一次：扫描超时的待付款订单并自动取消
+     * 每10秒执行一次：扫描超时的待付款订单并标记为已超时
      */
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRate = 10000)
     @Transactional
     public void cancelExpiredOrders() {
         long now = System.currentTimeMillis();
@@ -47,12 +47,12 @@ public class OrderTimeoutScheduler {
             return;
         }
 
-        logger.info("发现 {} 笔超时待付款订单，开始自动取消...", allPendingOrders.size());
+        logger.info("发现 {} 笔超时待付款订单，开始自动标记为已超时...", allPendingOrders.size());
 
         for (Order order : allPendingOrders) {
             try {
-                // 取消订单
-                order.setStatus("cancelled");
+                // 标记为已超时
+                order.setStatus("expired");
                 order.setUpdatedAt(now);
                 orderRepository.save(order);
 
@@ -68,10 +68,10 @@ public class OrderTimeoutScheduler {
                     });
                 }
 
-                logger.info("订单 {} (订单号: {}) 已超时自动取消，库存已恢复",
+                logger.info("订单 {} (订单号: {}) 已超时，状态标记为 expired，库存已恢复",
                         order.getOrderId(), order.getOrderNo());
             } catch (Exception e) {
-                logger.error("自动取消订单 {} 失败: {}", order.getOrderId(), e.getMessage(), e);
+                logger.error("超时处理订单 {} 失败: {}", order.getOrderId(), e.getMessage(), e);
             }
         }
     }

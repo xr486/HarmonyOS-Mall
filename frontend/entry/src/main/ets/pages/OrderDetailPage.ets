@@ -16,6 +16,7 @@ function getStatusText(status: OrderStatus): string {
   if (status === OrderStatus.PENDING_RECEIPT) return '待收货';
   if (status === OrderStatus.COMPLETED) return '已完成';
   if (status === OrderStatus.CANCELLED) return '已取消';
+  if (status === OrderStatus.EXPIRED) return '已超时';
   return '未知';
 }
 
@@ -25,6 +26,7 @@ function getStatusColor(status: OrderStatus): string {
   if (status === OrderStatus.PENDING_RECEIPT) return '#1890FF';
   if (status === OrderStatus.COMPLETED) return '#52C41A';
   if (status === OrderStatus.CANCELLED) return '#999';
+  if (status === OrderStatus.EXPIRED) return '#999';
   return '#999';
 }
 

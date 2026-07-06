@@ -145,7 +145,7 @@ public class OrderController {
 
             // 创建订单
             long now = System.currentTimeMillis();
-            long expireTime = now + 30 * 60 * 1000; // 30分钟支付超时
+            long expireTime = now + 30 * 1000; // 30秒支付超时（测试用）
             Order order = new Order();
             order.setOrderId(UUID.randomUUID().toString());
             order.setUserId(userId);

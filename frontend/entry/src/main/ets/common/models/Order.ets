@@ -5,7 +5,8 @@ export enum OrderStatus {
   PENDING_SHIPMENT = 1,
   PENDING_RECEIPT = 2,
   COMPLETED = 3,
-  CANCELLED = 4
+  CANCELLED = 4,
+  EXPIRED = 5
 }
 
 export interface OrderItem {

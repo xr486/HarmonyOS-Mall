@@ -28,6 +28,7 @@ function mapStatus(statusStr: string): OrderStatus {
   if (statusStr === 'shipped' || statusStr === 'pending_receipt') return OrderStatus.PENDING_RECEIPT;
   if (statusStr === 'completed') return OrderStatus.COMPLETED;
   if (statusStr === 'cancelled') return OrderStatus.CANCELLED;
+  if (statusStr === 'expired') return OrderStatus.EXPIRED;
   return OrderStatus.PENDING_PAYMENT;
 }
 
@@ -90,6 +91,7 @@ export class OrderService {
     if (status === OrderStatus.PENDING_RECEIPT) return 'pending_receipt';
     if (status === OrderStatus.COMPLETED) return 'completed';
     if (status === OrderStatus.CANCELLED) return 'cancelled';
+    if (status === OrderStatus.EXPIRED) return 'expired';
     return 'pending_payment';
   }
 

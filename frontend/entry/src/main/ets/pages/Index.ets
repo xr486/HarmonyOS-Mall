@@ -880,7 +880,7 @@ struct OrderTab {
   @State activeTab: number = 0;
   private isInitialized: boolean = false;
 
-  private tabItems: string[] = ['全部', '待付款', '待发货', '待收货', '已完成', '已取消'];
+  private tabItems: string[] = ['全部', '待付款', '待发货', '待收货', '已完成', '已取消', '已超时'];
 
   onRefreshKeyChange(): void {
     if (this.isInitialized) {
@@ -922,7 +922,9 @@ struct OrderTab {
     if (status === 1) { return '待发货'; }
     if (status === 2) { return '待收货'; }
     if (status === 3) { return '已完成'; }
-    return '已取消';
+    if (status === 4) { return '已取消'; }
+    if (status === 5) { return '已超时'; }
+    return '未知';
   }
 
   getStatusColor(status: number): string {
@@ -930,6 +932,8 @@ struct OrderTab {
     if (status === 1) { return '#FAAD14'; }
     if (status === 2) { return '#1890FF'; }
     if (status === 3) { return '#52C41A'; }
+    if (status === 4) { return '#999'; }
+    if (status === 5) { return '#999'; }
     return '#999';
   }
 

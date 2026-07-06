@@ -34,7 +34,8 @@ struct OrderListPage {
     { label: '待发货', status: OrderStatus.PENDING_SHIPMENT },
     { label: '待收货', status: OrderStatus.PENDING_RECEIPT },
     { label: '已完成', status: OrderStatus.COMPLETED },
-    { label: '已取消', status: OrderStatus.CANCELLED }
+    { label: '已取消', status: OrderStatus.CANCELLED },
+    { label: '已超时', status: OrderStatus.EXPIRED }
   ];
 
   aboutToAppear(): void {
@@ -85,6 +86,7 @@ struct OrderListPage {
     if (status === OrderStatus.PENDING_RECEIPT) { return '待收货'; }
     if (status === OrderStatus.COMPLETED) { return '已完成'; }
     if (status === OrderStatus.CANCELLED) { return '已取消'; }
+    if (status === OrderStatus.EXPIRED) { return '已超时'; }
     return '未知';
   }
 
@@ -94,6 +96,7 @@ struct OrderListPage {
     if (status === OrderStatus.PENDING_RECEIPT) { return '#1890FF'; }
     if (status === OrderStatus.COMPLETED) { return '#52C41A'; }
     if (status === OrderStatus.CANCELLED) { return '#999999'; }
+    if (status === OrderStatus.EXPIRED) { return '#999999'; }
     return '#999999';
   }
 
