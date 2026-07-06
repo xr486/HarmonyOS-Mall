@@ -37,6 +37,8 @@ export interface PaymentInfo {
   amount: number;
   /** 支付方式 */
   method: PaymentMethod;
+  /** 支付方式文本 */
+  methodText?: string;
   /** 支付状态 */
   status: PaymentStatus;
   /** 第三方交易号 */

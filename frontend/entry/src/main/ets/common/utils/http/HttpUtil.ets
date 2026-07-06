@@ -58,9 +58,8 @@ export class UpdateCartQuantityBody {
 }
 
 export class CreateOrderBody {
-  totalAmount: number = 0;
-  items: Object = new Object();
-  address: Object = new Object();
+  cartIds: string[] = [];
+  addressId: string = '';
   remark: string = '';
 }
 
