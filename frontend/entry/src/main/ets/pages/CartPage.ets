@@ -44,6 +44,10 @@ struct CartPage {
     this.loadCart();
   }
 
+  onPageShow(): void {
+    this.loadCart();
+  }
+
   async loadCart(): Promise<void> {
     this.isLoading = true;
     try {
