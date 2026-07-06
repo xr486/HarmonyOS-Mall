@@ -17,6 +17,7 @@
     "pages/NearbyPage",
     "pages/RecommendationPage",
     "pages/OrderConfirmPage",
-    "pages/OrderDetailPage"
+    "pages/OrderDetailPage",
+    "pages/PaymentPage"
   ]
 }

@@ -2,6 +2,13 @@ import { OrderService } from '../services/order/OrderService';
 import { Order, OrderItem, OrderStatus } from '../common/models';
 import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
+import { RouteConstants } from '../common/constants/RouteConstants';
+import { PayPageParams } from '../common/models/PaymentTypes';
+import { OrderRefreshUtil } from '../common/utils/OrderRefreshUtil';
+
+interface OrderDetailPageParams {
+  orderId: string;
+}
 
 function getStatusText(status: OrderStatus): string {
   if (status === OrderStatus.PENDING_PAYMENT) return '待付款';
@@ -31,13 +38,38 @@ function formatTime(timestamp: number): string {
 struct OrderDetailPage {
   @State order: Order | null = null;
   @State isLoading: boolean = true;
+  @StorageLink(OrderRefreshUtil.getKey()) @Watch('onRefreshTriggered') refreshTrigger: number = 0;
   private orderId: string = '';
 
+  onRefreshTriggered(): void {
+    if (this.orderId.length > 0) {
+      this.silentReload();
+    }
+  }
+
   aboutToAppear(): void {
-    const params: Record<string, Object> = router.getParams() as Record<string, Object>;
-    if (params && params['orderId']) {
-      this.orderId = params['orderId'] as string;
+    const params: Object = router.getParams();
+    if (params !== undefined) {
+      const pageParams = params as OrderDetailPageParams;
+      this.orderId = pageParams.orderId;
       this.loadDetail();
+    }
+  }
+
+  onPageShow(): void {
+    if (this.orderId.length > 0) {
+      this.silentReload();
+    }
+  }
+
+  async silentReload(): Promise<void> {
+    try {
+      const service: OrderService = OrderService.getInstance();
+      const result: Order | null = await service.getOrderDetail(this.orderId);
+      if (result) {
+        this.order = result;
+      }
+    } catch (e) {
     }
   }
 
@@ -58,6 +90,7 @@ struct OrderDetailPage {
     const service: OrderService = OrderService.getInstance();
     const success: boolean = await service.cancelOrder(this.order.orderId);
     if (success) {
+      OrderRefreshUtil.trigger();
       promptAction.showToast({ message: '订单已取消' });
       this.loadDetail();
     } else {
@@ -70,11 +103,25 @@ struct OrderDetailPage {
     const service: OrderService = OrderService.getInstance();
     const success: boolean = await service.confirmReceipt(this.order.orderId);
     if (success) {
+      OrderRefreshUtil.trigger();
       promptAction.showToast({ message: '确认收货成功' });
       this.loadDetail();
     } else {
       promptAction.showToast({ message: '操作失败，请重试' });
     }
+  }
+
+  goToPayment(): void {
+    if (!this.order) return;
+    const payParams: PayPageParams = {
+      orderId: this.order.orderId,
+      orderNo: this.order.orderNo,
+      amount: this.order.totalAmount
+    };
+    router.pushUrl({
+      url: RouteConstants.PAYMENT,
+      params: payParams
+    });
   }
 
   @Builder
@@ -133,6 +180,14 @@ struct OrderDetailPage {
         Text(`支付截止：${formatTime(this.order!.expireTime)}`)
           .fontSize(13)
           .fontColor('#FF4D4F')
+          .margin({ top: 4 })
+          .width('100%')
+      }
+
+      if (this.order!.status !== OrderStatus.PENDING_PAYMENT && this.order!.paidAt && this.order!.paidAt > 0) {
+        Text(`支付时间：${formatTime(this.order!.paidAt)}`)
+          .fontSize(13)
+          .fontColor('#52C41A')
           .margin({ top: 4 })
           .width('100%')
       }
@@ -315,31 +370,27 @@ struct OrderDetailPage {
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor('#333')
-        Text(this.order!.payment ? '已支付' : '未支付')
+        Text(this.order!.status !== OrderStatus.PENDING_PAYMENT && this.order!.status !== OrderStatus.CANCELLED ? '已支付' : '未支付')
           .fontSize(13)
-          .fontColor(this.order!.payment ? '#52C41A' : '#FF4D4F')
+          .fontColor(this.order!.status !== OrderStatus.PENDING_PAYMENT && this.order!.status !== OrderStatus.CANCELLED ? '#52C41A' : '#FF4D4F')
       }
       .width('100%')
       .justifyContent(FlexAlign.SpaceBetween)
       .margin({ bottom: 8 })
 
-      if (this.order!.payment) {
-        Text(`支付方式：${this.order!.payment.methodText || '未知'}`)
+      if (this.order!.status !== OrderStatus.PENDING_PAYMENT && this.order!.status !== OrderStatus.CANCELLED) {
+        Text(`支付金额：¥${this.order!.totalAmount.toFixed(2)}`)
           .fontSize(13)
           .fontColor('#666')
           .width('100%')
           .margin({ bottom: 4 })
 
-        Text(`支付金额：¥${this.order!.payment.amount.toFixed(2)}`)
-          .fontSize(13)
-          .fontColor('#666')
-          .width('100%')
-          .margin({ bottom: 4 })
-
-        Text(`支付时间：${formatTime(this.order!.payment.paidAt ?? 0)}`)
-          .fontSize(13)
-          .fontColor('#666')
-          .width('100%')
+        if (this.order!.paidAt && this.order!.paidAt > 0) {
+          Text(`支付时间：${formatTime(this.order!.paidAt)}`)
+            .fontSize(13)
+            .fontColor('#666')
+            .width('100%')
+        }
       }
     }
     .width('100%')
@@ -433,8 +484,7 @@ struct OrderDetailPage {
               .width(160)
               .onClick(() => {
                 if (this.order!.status === OrderStatus.PENDING_PAYMENT) {
-                  // 跳转支付（由支付模块处理）
-                  promptAction.showToast({ message: '请调用支付功能' });
+                  this.goToPayment();
                 } else {
                   this.confirmReceipt();
                 }

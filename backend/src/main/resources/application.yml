@@ -30,7 +30,26 @@ spring:
 server:
   port: 8080
 
-# 日志配置
+payment:
+  notify-url: http://localhost:8080/api/v1/payment/notify
+  alipay:
+    mock: true
+    app-id: 2021000123654321
+    gateway-url: https://openapi.alipaydev.com/gateway.do
+    charset: UTF-8
+    sign-type: RSA2
+    return-url: harmonymall://payment/return
+  wechat:
+    mock: true
+    app-id: wx1234567890abcdef
+    mch-id: 1234567890
+    api-v3-key: your_api_v3_key_32_characters_here
+  huawei:
+    mock: true
+    app-id: 123456789
+    cp-id: mock_cp_id
+    merchant-id: mock_merchant_id
+
 logging:
   level:
     com.hongmen.mall: debug

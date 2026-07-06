@@ -6,6 +6,7 @@ import { UserService } from '../services/user/UserService';
 import { AuthManager } from '../services/auth/AuthManager';
 import { Product, Category, CartItem, Order, OrderItem, User, RecommendationItem } from '../common/models';
 import { ProductCard } from '../components/ProductCard';
+import { OrderRefreshUtil } from '../common/utils/OrderRefreshUtil';
 import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
 
@@ -15,6 +16,7 @@ struct Index {
   @State currentTabIndex: number = 0;
   @State tabUser: User | null = null;
   @State cartRefreshKey: number = 0;
+  @State orderRefreshKey: number = 0;
   private tabTitles: string[] = ['首页', '购物车', '订单', '我的'];
 
   aboutToAppear(): void {
@@ -28,6 +30,9 @@ struct Index {
   onTabChange(index: number): void {
     if (index === 1) {
       this.cartRefreshKey++;
+    }
+    if (index === 2) {
+      this.orderRefreshKey++;
     }
     this.currentTabIndex = index;
   }
@@ -60,7 +65,7 @@ struct Index {
       .tabBar(this.TabBuilder(1))
 
       TabContent() {
-        OrderTab()
+        OrderTab({ refreshKey: this.orderRefreshKey })
       }
       .tabBar(this.TabBuilder(2))
 
@@ -348,6 +353,7 @@ function cloneCartItem(
 @Component
 struct CartTab {
   @Link @Watch('onRefreshKeyChange') refreshKey: number;
+  @StorageLink(OrderRefreshUtil.getKey()) @Watch('onOrderRefresh') orderRefreshTrigger: number = 0;
   @State cartItems: CartItem[] = [];
   @State isLoading: boolean = true;
   @State allSelected: boolean = true;
@@ -355,6 +361,12 @@ struct CartTab {
   private isInitialized: boolean = false;
 
   onRefreshKeyChange(): void {
+    if (this.isInitialized) {
+      this.loadCart();
+    }
+  }
+
+  onOrderRefresh(): void {
     if (this.isInitialized) {
       this.loadCart();
     }
@@ -861,13 +873,29 @@ struct CartTab {
 
 @Component
 struct OrderTab {
+  @Link @Watch('onRefreshKeyChange') refreshKey: number;
+  @StorageLink(OrderRefreshUtil.getKey()) @Watch('onOrderRefresh') orderRefreshTrigger: number = 0;
   @State orders: Order[] = [];
   @State isLoading: boolean = true;
   @State activeTab: number = 0;
+  private isInitialized: boolean = false;
 
   private tabItems: string[] = ['全部', '待付款', '待发货', '待收货', '已完成', '已取消'];
 
+  onRefreshKeyChange(): void {
+    if (this.isInitialized) {
+      this.loadOrders();
+    }
+  }
+
+  onOrderRefresh(): void {
+    if (this.isInitialized) {
+      this.loadOrders();
+    }
+  }
+
   aboutToAppear(): void {
+    this.isInitialized = true;
     this.loadOrders();
   }
 
@@ -1100,10 +1128,12 @@ struct OrderTab {
             }
             .padding({ left: 12, right: 12, bottom: 12 })
             .width('100%')
+            .justifyContent(FlexAlign.Start)
         }
         .layoutWeight(1)
         .scrollBar(BarState.Off)
         .backgroundColor('#F5F5F5')
+        .align(Alignment.Top)
       }
     }
     .width('100%')
