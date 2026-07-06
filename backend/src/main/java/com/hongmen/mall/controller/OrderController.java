@@ -9,6 +9,7 @@ import com.hongmen.mall.repository.OrderRepository;
 import com.hongmen.mall.repository.OrderItemRepository;
 import com.hongmen.mall.repository.CartItemRepository;
 import com.hongmen.mall.repository.AddressRepository;
+import com.hongmen.mall.repository.ProductRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ public class OrderController {
     private final OrderItemRepository orderItemRepository;
     private final CartItemRepository cartItemRepository;
     private final AddressRepository addressRepository;
+    private final ProductRepository productRepository;
 
     private String getUserId(HttpServletRequest request) {
         return (String) request.getAttribute("userId");
@@ -35,6 +37,7 @@ public class OrderController {
 
     @GetMapping
     public Result<List<Order>> listOrders(@RequestParam(required = false) String status,
+                                          @RequestParam(required = false) String keyword,
                                           HttpServletRequest request) {
         String userId = getUserId(request);
         if (userId == null) return Result.error(401, "未登录");
@@ -47,6 +50,26 @@ public class OrderController {
         // 填充订单商品明细，便于前端列表展示
         for (Order order : orders) {
             order.setItems(orderItemRepository.findByOrderId(order.getOrderId()));
+        }
+
+        // 关键词搜索：按订单号或商品名称过滤
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = keyword.trim();
+            orders = orders.stream()
+                    .filter(order -> {
+                        // 匹配订单号
+                        if (order.getOrderNo() != null && order.getOrderNo().contains(kw)) {
+                            return true;
+                        }
+                        // 匹配商品名称
+                        if (order.getItems() != null) {
+                            return order.getItems().stream()
+                                    .anyMatch(item -> item.getProductName() != null
+                                            && item.getProductName().contains(kw));
+                        }
+                        return false;
+                    })
+                    .toList();
         }
         return Result.success(orders);
     }
@@ -174,9 +197,21 @@ public class OrderController {
                 return Result.<Order>error(403, "无权限");
             if (!"pending_payment".equals(order.getStatus()))
                 return Result.<Order>error(400, "仅待付款订单可取消");
+            long now = System.currentTimeMillis();
             order.setStatus("cancelled");
-            order.setUpdatedAt(System.currentTimeMillis());
+            order.setUpdatedAt(now);
             orderRepository.save(order);
+
+            // 恢复商品库存
+            List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+            for (OrderItem item : items) {
+                productRepository.findById(item.getProductId()).ifPresent(product -> {
+                    product.setStock(product.getStock() + item.getQuantity());
+                    product.setUpdatedAt(now);
+                    productRepository.save(product);
+                });
+            }
+
             return Result.success(order);
         }).orElse(Result.error(404, "订单不存在"));
     }
