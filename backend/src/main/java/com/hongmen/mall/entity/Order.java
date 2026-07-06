@@ -3,6 +3,8 @@ package com.hongmen.mall.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 订单实体
  */
@@ -40,4 +42,16 @@ public class Order {
 
     @Column(name = "updated_at", nullable = false)
     private Long updatedAt;
+
+    @Column(name = "paid_at")
+    private Long paidAt;
+
+    @Column(name = "completed_at")
+    private Long completedAt;
+
+    @Column(name = "expire_time")
+    private Long expireTime;
+
+    @Transient
+    private List<OrderItem> items;
 }

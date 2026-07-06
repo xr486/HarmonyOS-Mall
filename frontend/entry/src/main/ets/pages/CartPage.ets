@@ -561,7 +561,16 @@ struct CartPage {
             .enabled(this.getSelectedCount() > 0)
             .onClick(() => {
               if (this.getSelectedCount() > 0) {
-                router.pushUrl({ url: 'pages/OrderListPage' });
+                const selectedIds: string[] = [];
+                for (let i: number = 0; i < this.cartItems.length; i++) {
+                  if (this.cartItems[i].selected) {
+                    selectedIds.push(this.cartItems[i].cartId);
+                  }
+                }
+                router.pushUrl({
+                  url: 'pages/OrderConfirmPage',
+                  params: { cartIds: selectedIds }
+                });
               }
             })
         }
