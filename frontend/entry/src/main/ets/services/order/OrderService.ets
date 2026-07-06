@@ -24,8 +24,8 @@ class OrderObj {
 /** 字符串状态 -> 枚举映射 */
 function mapStatus(statusStr: string): OrderStatus {
   if (statusStr === 'pending_payment') return OrderStatus.PENDING_PAYMENT;
-  if (statusStr === 'pending_shipment') return OrderStatus.PENDING_SHIPMENT;
-  if (statusStr === 'pending_receipt') return OrderStatus.PENDING_RECEIPT;
+  if (statusStr === 'paid' || statusStr === 'pending_shipment') return OrderStatus.PENDING_SHIPMENT;
+  if (statusStr === 'shipped' || statusStr === 'pending_receipt') return OrderStatus.PENDING_RECEIPT;
   if (statusStr === 'completed') return OrderStatus.COMPLETED;
   if (statusStr === 'cancelled') return OrderStatus.CANCELLED;
   return OrderStatus.PENDING_PAYMENT;
