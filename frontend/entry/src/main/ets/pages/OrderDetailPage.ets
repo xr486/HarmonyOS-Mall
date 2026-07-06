@@ -471,7 +471,6 @@ struct OrderDetailPage {
             this.order.status === OrderStatus.COMPLETED) {
           Row() {
             if (this.order.status === OrderStatus.PENDING_PAYMENT) {
-            if (this.order.status === OrderStatus.PENDING_PAYMENT) {
               Button('取消订单')
                 .fontSize(14)
                 .fontColor('#666')

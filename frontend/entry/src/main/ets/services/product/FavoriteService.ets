@@ -5,6 +5,16 @@ import { Logger } from '../../common/utils/logger/Logger';
 const TAG = 'FavoriteService';
 
 /**
+ * 收藏切换请求体
+ */
+class ToggleFavoriteBody {
+  productId: string = '';
+  constructor(productId: string) {
+    this.productId = productId;
+  }
+}
+
+/**
  * 收藏服务
  */
 export class FavoriteService {
@@ -56,9 +66,7 @@ export class FavoriteService {
    */
   async toggleFavorite(productId: string): Promise<boolean> {
     try {
-      const body: Record<string, Object> = {
-        productId: productId
-      };
+      const body: ToggleFavoriteBody = new ToggleFavoriteBody(productId);
       const res: ApiResponse<Record<string, Object>> = await HttpUtil.post('/favorites/toggle', body);
       Logger.info(TAG, 'toggleFavorite code=%{public}d', res.code);
       if (res.code === 200 && res.data) {

@@ -5,6 +5,22 @@ import { Logger } from '../../common/utils/logger/Logger';
 const TAG = 'ReviewService';
 
 /**
+ * 创建评价请求体
+ */
+class CreateReviewBody {
+  productId: string = '';
+  rating: number = 0;
+  content: string = '';
+  userName?: string;
+  constructor(productId: string, rating: number, content: string, userName?: string) {
+    this.productId = productId;
+    this.rating = rating;
+    this.content = content;
+    this.userName = userName;
+  }
+}
+
+/**
  * 评价服务
  */
 export class ReviewService {
@@ -56,14 +72,7 @@ export class ReviewService {
    */
   async createReview(productId: string, rating: number, content: string, userName?: string): Promise<boolean> {
     try {
-      const body: Record<string, Object> = {
-        productId: productId,
-        rating: rating,
-        content: content
-      };
-      if (userName && userName.length > 0) {
-        body['userName'] = userName;
-      }
+      const body: CreateReviewBody = new CreateReviewBody(productId, rating, content, userName);
       const res: ApiResponse<Object> = await HttpUtil.post('/reviews', body);
       Logger.info(TAG, 'createReview code=%{public}d', res.code);
       return res.code === 200;
