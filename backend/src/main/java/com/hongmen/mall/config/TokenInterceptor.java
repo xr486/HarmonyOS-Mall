@@ -14,15 +14,25 @@ public class TokenInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        // auth 接口不需要鉴权
         String path = request.getRequestURI();
         if (path.startsWith("/api/v1/auth/")) {
             return true;
         }
 
-        // GET 请求的商品/分类接口允许匿名访问
         if ("GET".equalsIgnoreCase(request.getMethod()) &&
             (path.startsWith("/api/v1/products") || path.startsWith("/api/v1/categories"))) {
+            return true;
+        }
+
+        if (path.startsWith("/api/v1/payment/notify/")) {
+            return true;
+        }
+
+        if (path.startsWith("/api/v1/payment/mock/")) {
+            return true;
+        }
+
+        if (path.startsWith("/api/v1/location/nearby")) {
             return true;
         }
 

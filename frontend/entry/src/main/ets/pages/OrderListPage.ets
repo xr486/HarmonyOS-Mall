@@ -1,13 +1,50 @@
 import { OrderService } from '../services/order/OrderService';
-import { Order, OrderStatus, OrderItem } from '../common/models';
+import { Order, OrderItem, OrderStatus } from '../common/models';
+import { Address } from '../common/models/Address';
 import router from '@ohos.router';
+
+function mapOrderStatus(statusStr: string): OrderStatus {
+  const statusMap: Record<string, OrderStatus> = {
+    'pending_payment': OrderStatus.PENDING_PAYMENT,
+    'paid': OrderStatus.PENDING_SHIPMENT,
+    'shipped': OrderStatus.PENDING_RECEIPT,
+    'completed': OrderStatus.COMPLETED,
+    'cancelled': OrderStatus.CANCELLED
+  };
+  const mapped: OrderStatus | undefined = statusMap[statusStr];
+  return mapped !== undefined ? mapped : OrderStatus.PENDING_PAYMENT;
+}
+
+function getEmptyAddress(): Address {
+  const now: number = Date.now();
+  const addr: Address = {
+    addressId: '',
+    userId: '',
+    name: '',
+    phone: '',
+    province: '',
+    city: '',
+    district: '',
+    detail: '',
+    isDefault: false,
+    createdAt: now,
+    updatedAt: now
+  };
+  return addr;
+}
+
+interface RouterPayParams {
+  orderId: string;
+  orderNo: string;
+  amount: number;
+}
 
 @Entry
 @Component
 struct OrderListPage {
   @State orders: Order[] = [];
   @State isLoading: boolean = true;
-  @State activeTab: number = 0;
+  @State activeTab: number = -1;
 
   aboutToAppear(): void {
     this.loadOrders();
@@ -18,7 +55,32 @@ struct OrderListPage {
     try {
       const service: OrderService = OrderService.getInstance();
       const allOrders: Order[] = await service.getAllOrders('default_user');
-      this.orders = allOrders;
+      const mappedOrders: Order[] = [];
+      for (let i = 0; i < allOrders.length; i++) {
+        const o: Order = allOrders[i];
+        let orderStatus: OrderStatus = OrderStatus.PENDING_PAYMENT;
+        const rawStatus: string | number = o.status as string | number;
+        if (typeof rawStatus === 'string') {
+          orderStatus = mapOrderStatus(rawStatus);
+        } else {
+          orderStatus = rawStatus as OrderStatus;
+        }
+        const orderAddress: Address = o.address ? o.address : getEmptyAddress();
+        const mapped: Order = {
+          orderId: o.orderId,
+          orderNo: o.orderNo !== undefined ? o.orderNo : '',
+          userId: o.userId !== undefined ? o.userId : '',
+          totalAmount: o.totalAmount !== undefined ? o.totalAmount : 0,
+          status: orderStatus,
+          items: o.items !== undefined ? o.items : [],
+          address: orderAddress,
+          remark: o.remark,
+          createdAt: o.createdAt !== undefined ? o.createdAt : Date.now(),
+          expireTime: o.expireTime !== undefined ? o.expireTime : Date.now() + 1800000
+        };
+        mappedOrders.push(mapped);
+      }
+      this.orders = mappedOrders;
     } catch (e) {
       this.orders = [];
     }
@@ -26,13 +88,13 @@ struct OrderListPage {
   }
 
   getFilteredOrders(): Order[] {
-    if (this.activeTab === 0) {
+    if (this.activeTab === -1) {
       return this.orders;
     }
-    return this.orders.filter((o: Order) => o.status === (this.activeTab as OrderStatus));
+    return this.orders.filter((o: Order) => o.status === this.activeTab);
   }
 
-  getStatusText(status: OrderStatus): string {
+  getStatusText(status: number): string {
     if (status === OrderStatus.PENDING_PAYMENT) { return '待付款'; }
     if (status === OrderStatus.PENDING_SHIPMENT) { return '待发货'; }
     if (status === OrderStatus.PENDING_RECEIPT) { return '待收货'; }
@@ -41,10 +103,22 @@ struct OrderListPage {
     return '未知';
   }
 
-  getStatusColor(status: OrderStatus): string {
+  getStatusColor(status: number): string {
     if (status === OrderStatus.PENDING_PAYMENT) { return '#FF4D4F'; }
     if (status === OrderStatus.CANCELLED) { return '#999'; }
     return '#52C41A';
+  }
+
+  goToPayment(order: Order): void {
+    const params: RouterPayParams = {
+      orderId: order.orderId,
+      orderNo: order.orderNo,
+      amount: order.totalAmount
+    };
+    router.pushUrl({
+      url: 'pages/PaymentPage',
+      params: params
+    });
   }
 
   build() {
@@ -69,9 +143,9 @@ struct OrderListPage {
       Row() {
         Text('全部')
           .fontSize(14)
-          .fontColor(this.activeTab === 0 ? '#FF4D4F' : '#333')
+          .fontColor(this.activeTab === -1 ? '#FF4D4F' : '#333')
           .padding(8)
-          .onClick(() => { this.activeTab = 0; })
+          .onClick(() => { this.activeTab = -1; })
 
         Text('待付款')
           .fontSize(14)
@@ -168,6 +242,30 @@ struct OrderListPage {
                 .width('100%')
                 .justifyContent(FlexAlign.End)
                 .margin({ top: 10 })
+
+                if (order.status === OrderStatus.PENDING_PAYMENT) {
+                  Row() {
+                    Button('取消订单')
+                      .fontSize(13)
+                      .height(32)
+                      .backgroundColor('#f5f5f5')
+                      .fontColor('#666')
+                      .borderRadius(16)
+                      .padding({ left: 16, right: 16 })
+                    Button('去支付')
+                      .fontSize(13)
+                      .height(32)
+                      .backgroundColor('#ff4d4f')
+                      .fontColor(Color.White)
+                      .borderRadius(16)
+                      .padding({ left: 20, right: 20 })
+                      .margin({ left: 12 })
+                      .onClick(() => this.goToPayment(order))
+                  }
+                  .width('100%')
+                  .justifyContent(FlexAlign.End)
+                  .margin({ top: 12 })
+                }
               }
               .width('100%')
               .padding(14)
