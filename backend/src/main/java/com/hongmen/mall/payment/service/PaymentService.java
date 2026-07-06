@@ -2,6 +2,7 @@ package com.hongmen.mall.payment.service;
 
 import com.hongmen.mall.entity.Order;
 import com.hongmen.mall.entity.Payment;
+import com.hongmen.mall.payment.config.PaymentConfig;
 import com.hongmen.mall.payment.dto.PayRequest;
 import com.hongmen.mall.payment.dto.PayResponse;
 import com.hongmen.mall.payment.dto.PaymentResultDTO;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,6 +31,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final PaymentStrategyFactory strategyFactory;
+    private final PaymentConfig paymentConfig;
 
     @Transactional
     public PayResponse createPayRequest(PayRequest payRequest, String userId) {
@@ -50,6 +53,17 @@ public class PaymentService {
             throw new IllegalArgumentException("订单状态不允许支付: " + order.getStatus());
         }
 
+        List<Payment> oldPendingPayments = paymentRepository.findByOrderIdAndStatus(orderId, PaymentStatusEnum.PENDING.getCode());
+        long now = System.currentTimeMillis();
+        for (Payment old : oldPendingPayments) {
+            old.setStatus(PaymentStatusEnum.CLOSED.getCode());
+            old.setUpdatedAt(now);
+        }
+        if (!oldPendingPayments.isEmpty()) {
+            paymentRepository.saveAll(oldPendingPayments);
+            log.info("关闭旧的待支付记录: {} 条, orderId={}", oldPendingPayments.size(), orderId);
+        }
+
         Payment payment = new Payment();
         payment.setPaymentId(UUID.randomUUID().toString().replace("-", ""));
         payment.setOrderId(orderId);
@@ -60,7 +74,6 @@ public class PaymentService {
         payment.setStatus(PaymentStatusEnum.PENDING.getCode());
         payment.setSubject("鸿蒙商城订单-" + order.getOrderNo());
         payment.setBody("订单金额: " + String.format("%.2f", order.getTotalAmount()) + "元");
-        long now = System.currentTimeMillis();
         payment.setCreatedAt(now);
         payment.setUpdatedAt(now);
         paymentRepository.save(payment);
@@ -78,17 +91,18 @@ public class PaymentService {
         PaymentStrategy strategy = strategyFactory.getStrategy(method);
         PaymentResultDTO result = strategy.verifyCallbackAndParse(params);
 
-        Optional<Payment> paymentOpt = paymentRepository.findByOrderNo(result.getOrderNo());
-        if (paymentOpt.isEmpty()) {
+        Optional<Payment> latestPaymentOpt = paymentRepository.findFirstByOrderNoOrderByCreatedAtDesc(result.getOrderNo());
+        if (latestPaymentOpt.isEmpty()) {
             log.warn("回调订单不存在: {}", result.getOrderNo());
             return result;
         }
 
-        Payment payment = paymentOpt.get();
+        Payment payment = latestPaymentOpt.get();
 
         if (PaymentStatusEnum.SUCCESS.getCode().equals(payment.getStatus())) {
             log.info("订单已支付，幂等返回: {}", result.getOrderNo());
             result.setStatus(PaymentStatusEnum.SUCCESS);
+            result.setTransactionNo(payment.getTransactionNo());
             return result;
         }
 
@@ -102,7 +116,8 @@ public class PaymentService {
 
             Order order = orderRepository.findById(payment.getOrderId()).orElse(null);
             if (order != null) {
-                order.setStatus("paid");
+                order.setStatus("pending_shipment");
+                order.setPaidAt(payment.getPaidAt());
                 order.setUpdatedAt(System.currentTimeMillis());
                 orderRepository.save(order);
             }
@@ -126,7 +141,7 @@ public class PaymentService {
             throw new IllegalArgumentException("无权查询此订单");
         }
 
-        Optional<Payment> paymentOpt = paymentRepository.findByOrderId(orderId);
+        Optional<Payment> paymentOpt = paymentRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId);
         PaymentResultDTO result = PaymentResultDTO.builder()
                 .orderId(orderId)
                 .orderNo(order.getOrderNo())
@@ -148,27 +163,47 @@ public class PaymentService {
             }
             result.setStatus(status);
 
-            if (status != PaymentStatusEnum.SUCCESS && status != PaymentStatusEnum.FAILED) {
-                PaymentMethodEnum method = PaymentMethodEnum.getByCode(payment.getMethod());
-                if (method != null) {
-                    try {
-                        PaymentStrategy strategy = strategyFactory.getStrategy(method);
-                        PaymentResultDTO queryResult = strategy.queryOrderStatus(payment);
-                        if (queryResult.getStatus() == PaymentStatusEnum.SUCCESS) {
-                            payment.setStatus(PaymentStatusEnum.SUCCESS.getCode());
-                            payment.setTransactionNo(queryResult.getTransactionNo());
-                            payment.setPaidAt(System.currentTimeMillis());
-                            payment.setUpdatedAt(System.currentTimeMillis());
-                            paymentRepository.save(payment);
+            if (status != PaymentStatusEnum.SUCCESS && status != PaymentStatusEnum.FAILED && status != PaymentStatusEnum.CLOSED) {
+                PaymentMethodEnum payMethod = PaymentMethodEnum.getByCode(payment.getMethod());
+                if (payMethod != null) {
+                    boolean isMock = this.isMockMode(payMethod);
+                    if (isMock) {
+                        log.info("[MOCK] 支付轮询，直接标记支付成功: orderNo={}", payment.getOrderNo());
+                        payment.setStatus(PaymentStatusEnum.SUCCESS.getCode());
+                        payment.setTransactionNo("MOCK_" + payMethod.getCode().toUpperCase() + "_" + System.currentTimeMillis());
+                        payment.setPaidAt(System.currentTimeMillis());
+                        payment.setUpdatedAt(System.currentTimeMillis());
+                        paymentRepository.save(payment);
 
-                            order.setStatus("paid");
-                            order.setUpdatedAt(System.currentTimeMillis());
-                            orderRepository.save(order);
-                            result.setStatus(PaymentStatusEnum.SUCCESS);
-                            result.setTransactionNo(queryResult.getTransactionNo());
+                        order.setStatus("pending_shipment");
+                        order.setPaidAt(payment.getPaidAt());
+                        order.setUpdatedAt(System.currentTimeMillis());
+                        orderRepository.save(order);
+
+                        result.setStatus(PaymentStatusEnum.SUCCESS);
+                        result.setTransactionNo(payment.getTransactionNo());
+                        result.setPaidAt(payment.getPaidAt());
+                    } else {
+                        try {
+                            PaymentStrategy strategy = strategyFactory.getStrategy(payMethod);
+                            PaymentResultDTO queryResult = strategy.queryOrderStatus(payment);
+                            if (queryResult.getStatus() == PaymentStatusEnum.SUCCESS) {
+                                payment.setStatus(PaymentStatusEnum.SUCCESS.getCode());
+                                payment.setTransactionNo(queryResult.getTransactionNo());
+                                payment.setPaidAt(System.currentTimeMillis());
+                                payment.setUpdatedAt(System.currentTimeMillis());
+                                paymentRepository.save(payment);
+
+                                order.setStatus("pending_shipment");
+                                order.setPaidAt(payment.getPaidAt());
+                                order.setUpdatedAt(System.currentTimeMillis());
+                                orderRepository.save(order);
+                                result.setStatus(PaymentStatusEnum.SUCCESS);
+                                result.setTransactionNo(queryResult.getTransactionNo());
+                            }
+                        } catch (Exception e) {
+                            log.error("查询支付状态失败", e);
                         }
-                    } catch (Exception e) {
-                        log.error("查询支付状态失败", e);
                     }
                 }
             }
@@ -185,12 +220,80 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("支付记录不存在"));
 
         PaymentMethodEnum method = PaymentMethodEnum.getByCode(payment.getMethod());
-        PaymentStrategy strategy = strategyFactory.getStrategy(method);
+        boolean isMock = this.isMockMode(method);
+
+        long now = System.currentTimeMillis();
+
+        if (isMock) {
+            log.info("[MOCK] 收到前端同步结果，直接标记支付成功: paymentId={}, orderNo={}", paymentId, payment.getOrderNo());
+            payment.setStatus(PaymentStatusEnum.SUCCESS.getCode());
+            payment.setTransactionNo("MOCK_" + method.getCode().toUpperCase() + "_" + now);
+            payment.setPaidAt(now);
+            payment.setUpdatedAt(now);
+            paymentRepository.save(payment);
+
+            Order order = orderRepository.findById(payment.getOrderId()).orElse(null);
+            if (order != null && "pending_payment".equals(order.getStatus())) {
+                order.setStatus("pending_shipment");
+                order.setPaidAt(now);
+                order.setUpdatedAt(now);
+                orderRepository.save(order);
+            }
+
+            return PaymentResultDTO.builder()
+                    .paymentId(payment.getPaymentId())
+                    .orderId(payment.getOrderId())
+                    .orderNo(payment.getOrderNo())
+                    .status(PaymentStatusEnum.SUCCESS)
+                    .transactionNo(payment.getTransactionNo())
+                    .paidAt(now)
+                    .paidAmount(payment.getAmount().doubleValue())
+                    .build();
+        }
 
         payment.setStatus(PaymentStatusEnum.PROCESSING.getCode());
-        payment.setUpdatedAt(System.currentTimeMillis());
+        payment.setUpdatedAt(now);
         paymentRepository.save(payment);
 
-        return strategy.parseSyncResult(payment, resultJson);
+        PaymentStrategy strategy = strategyFactory.getStrategy(method);
+        PaymentResultDTO result = strategy.parseSyncResult(payment, resultJson);
+
+        if (result.getStatus() == PaymentStatusEnum.SUCCESS) {
+            payment.setStatus(PaymentStatusEnum.SUCCESS.getCode());
+            payment.setTransactionNo(result.getTransactionNo());
+            payment.setPaidAt(result.getPaidAt() != null ? result.getPaidAt() : now);
+            payment.setUpdatedAt(now);
+            paymentRepository.save(payment);
+
+            Order order = orderRepository.findById(payment.getOrderId()).orElse(null);
+            if (order != null && "pending_payment".equals(order.getStatus())) {
+                order.setStatus("pending_shipment");
+                order.setPaidAt(payment.getPaidAt());
+                order.setUpdatedAt(now);
+                orderRepository.save(order);
+            }
+        } else if (result.getStatus() == PaymentStatusEnum.FAILED) {
+            payment.setStatus(PaymentStatusEnum.FAILED.getCode());
+            payment.setUpdatedAt(now);
+            paymentRepository.save(payment);
+        }
+
+        return result;
+    }
+
+    private boolean isMockMode(PaymentMethodEnum method) {
+        if (method == null) {
+            return false;
+        }
+        switch (method) {
+            case ALIPAY:
+                return paymentConfig.getAlipay().isMock();
+            case WECHAT_PAY:
+                return paymentConfig.getWechat().isMock();
+            case HUAWEI_PAY:
+                return paymentConfig.getHuawei().isMock();
+            default:
+                return false;
+        }
     }
 }

@@ -120,6 +120,7 @@ public class HuaweiPaymentStrategy implements PaymentStrategy {
 
     @Override
     public PaymentResultDTO parseSyncResult(Payment payment, String resultJson) {
+        PaymentConfig.HuaweiPayConfig config = paymentConfig.getHuawei();
         PaymentResultDTO result = PaymentResultDTO.builder()
                 .paymentId(payment.getPaymentId())
                 .orderId(payment.getOrderId())
@@ -131,9 +132,16 @@ public class HuaweiPaymentStrategy implements PaymentStrategy {
                     ((Number) resultMap.get("returnCode")).intValue() : -1;
 
             if (returnCode == 0) {
-                result.setStatus(PaymentStatusEnum.PROCESSING);
-                result.setTransactionNo(resultMap.get("tradeNo") != null ?
-                        resultMap.get("tradeNo").toString() : null);
+                if (config.isMock()) {
+                    result.setStatus(PaymentStatusEnum.SUCCESS);
+                    result.setTransactionNo("MOCK_HW_" + System.currentTimeMillis());
+                    result.setPaidAt(System.currentTimeMillis());
+                    result.setPaidAmount(payment.getAmount().doubleValue());
+                } else {
+                    result.setStatus(PaymentStatusEnum.PROCESSING);
+                    result.setTransactionNo(resultMap.get("tradeNo") != null ?
+                            resultMap.get("tradeNo").toString() : null);
+                }
             } else if (returnCode == 1001) {
                 result.setStatus(PaymentStatusEnum.FAILED);
                 result.setErrorCode("USER_CANCEL");
@@ -166,7 +174,10 @@ public class HuaweiPaymentStrategy implements PaymentStrategy {
                 .build();
 
         if (config.isMock()) {
-            result.setStatus(PaymentStatusEnum.PROCESSING);
+            result.setStatus(PaymentStatusEnum.SUCCESS);
+            result.setTransactionNo("MOCK_HW_" + System.currentTimeMillis());
+            result.setPaidAt(System.currentTimeMillis());
+            result.setPaidAmount(payment.getAmount().doubleValue());
             return result;
         }
 

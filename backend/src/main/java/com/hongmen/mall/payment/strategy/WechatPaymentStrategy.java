@@ -99,6 +99,7 @@ public class WechatPaymentStrategy implements PaymentStrategy {
 
     @Override
     public PaymentResultDTO parseSyncResult(Payment payment, String resultJson) {
+        PaymentConfig.WechatPayConfig config = paymentConfig.getWechat();
         PaymentResultDTO result = PaymentResultDTO.builder()
                 .paymentId(payment.getPaymentId())
                 .orderId(payment.getOrderId())
@@ -110,7 +111,14 @@ public class WechatPaymentStrategy implements PaymentStrategy {
                     ((Number) resultMap.get("errCode")).intValue() : -1;
 
             if (errCode == 0) {
-                result.setStatus(PaymentStatusEnum.PROCESSING);
+                if (config.isMock()) {
+                    result.setStatus(PaymentStatusEnum.SUCCESS);
+                    result.setTransactionNo("MOCK_WX_" + System.currentTimeMillis());
+                    result.setPaidAt(System.currentTimeMillis());
+                    result.setPaidAmount(payment.getAmount().doubleValue());
+                } else {
+                    result.setStatus(PaymentStatusEnum.PROCESSING);
+                }
             } else if (errCode == -2) {
                 result.setStatus(PaymentStatusEnum.FAILED);
                 result.setErrorCode("USER_CANCEL");
@@ -138,7 +146,10 @@ public class WechatPaymentStrategy implements PaymentStrategy {
                 .build();
 
         if (config.isMock()) {
-            result.setStatus(PaymentStatusEnum.PROCESSING);
+            result.setStatus(PaymentStatusEnum.SUCCESS);
+            result.setTransactionNo("MOCK_WX_" + System.currentTimeMillis());
+            result.setPaidAt(System.currentTimeMillis());
+            result.setPaidAmount(payment.getAmount().doubleValue());
             return result;
         }
 

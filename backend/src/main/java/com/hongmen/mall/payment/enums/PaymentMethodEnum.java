@@ -1,5 +1,6 @@
 package com.hongmen.mall.payment.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
@@ -9,6 +10,7 @@ public enum PaymentMethodEnum {
     WECHAT_PAY("wechat", "微信支付"),
     HUAWEI_PAY("huawei", "华为支付");
 
+    @JsonValue
     private final String code;
     private final String desc;
 

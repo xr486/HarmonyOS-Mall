@@ -46,6 +46,12 @@ export interface PaymentChannelInfo {
   enabled: boolean;
 }
 
+export interface PayPageParams {
+  orderId: string;
+  orderNo: string;
+  amount: number;
+}
+
 export const PAYMENT_CHANNELS: PaymentChannelInfo[] = [
   {
     method: PaymentMethodType.ALIPAY,

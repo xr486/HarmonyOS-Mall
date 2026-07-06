@@ -5,16 +5,17 @@
 export class RouteConstants {
   static readonly HOME = 'pages/HomePage';
   
-  static readonly PRODUCT_LIST = 'pages/ProductDetailPage';
+  static readonly PRODUCT_LIST = 'pages/ProductListPage';
   static readonly PRODUCT_DETAIL = 'pages/ProductDetailPage';
-  static readonly CATEGORY = 'pages/ProductDetailPage';
-  static readonly SEARCH = 'pages/ProductDetailPage';
+  static readonly CATEGORY = 'pages/CategoryPage';
+  static readonly SEARCH = 'pages/SearchPage';
+  static readonly SEARCH_RESULT = 'pages/SearchResultPage';
   
   static readonly CART = 'pages/CartPage';
   
-  static readonly ORDER_CONFIRM = 'pages/OrderListPage';
+  static readonly ORDER_CONFIRM = 'pages/OrderConfirmPage';
   static readonly ORDER_LIST = 'pages/OrderListPage';
-  static readonly ORDER_DETAIL = 'pages/OrderListPage';
+  static readonly ORDER_DETAIL = 'pages/OrderDetailPage';
   static readonly PAYMENT = 'pages/PaymentPage';
   
   static readonly LOGIN = 'pages/Login';
@@ -26,4 +27,6 @@ export class RouteConstants {
   
   static readonly SETTINGS = 'pages/Settings';
   static readonly ABOUT = 'pages/About';
+  static readonly NEARBY = 'pages/NearbyPage';
+  static readonly RECOMMENDATION = 'pages/RecommendationPage';
 }

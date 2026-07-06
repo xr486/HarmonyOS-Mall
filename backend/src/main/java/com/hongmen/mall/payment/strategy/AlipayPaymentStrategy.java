@@ -141,6 +141,7 @@ public class AlipayPaymentStrategy implements PaymentStrategy {
 
     @Override
     public PaymentResultDTO parseSyncResult(Payment payment, String resultJson) {
+        PaymentConfig.AlipayConfig config = paymentConfig.getAlipay();
         PaymentResultDTO result = PaymentResultDTO.builder()
                 .paymentId(payment.getPaymentId())
                 .orderId(payment.getOrderId())
@@ -151,8 +152,15 @@ public class AlipayPaymentStrategy implements PaymentStrategy {
             String resultStatus = resultMap.getOrDefault("resultStatus", "9000");
 
             if ("9000".equals(resultStatus)) {
-                result.setStatus(PaymentStatusEnum.PROCESSING);
-                result.setTransactionNo(resultMap.get("memo"));
+                if (config.isMock()) {
+                    result.setStatus(PaymentStatusEnum.SUCCESS);
+                    result.setTransactionNo("MOCK_ALI_" + System.currentTimeMillis());
+                    result.setPaidAt(System.currentTimeMillis());
+                    result.setPaidAmount(payment.getAmount().doubleValue());
+                } else {
+                    result.setStatus(PaymentStatusEnum.PROCESSING);
+                    result.setTransactionNo(resultMap.get("memo"));
+                }
             } else {
                 result.setStatus(PaymentStatusEnum.FAILED);
                 result.setErrorCode(resultStatus);
@@ -181,7 +189,10 @@ public class AlipayPaymentStrategy implements PaymentStrategy {
                 .build();
 
         if (config.isMock()) {
-            result.setStatus(PaymentStatusEnum.PROCESSING);
+            result.setStatus(PaymentStatusEnum.SUCCESS);
+            result.setTransactionNo("MOCK_ALI_" + System.currentTimeMillis());
+            result.setPaidAt(System.currentTimeMillis());
+            result.setPaidAmount(payment.getAmount().doubleValue());
             return result;
         }
 

@@ -5,18 +5,14 @@ import {
   PaymentResultStatus,
   PAYMENT_CHANNELS,
   PaymentChannelInfo,
-  PaymentResult
+  PaymentResult,
+  PayPageParams
 } from '../common/models/PaymentTypes';
 import { PaymentManager } from '../services/payment/PaymentManager';
 import { Logger } from '../common/utils/logger/Logger';
+import { OrderRefreshUtil } from '../common/utils/OrderRefreshUtil';
 
 const TAG = 'PaymentPage';
-
-interface PayPageParams {
-  orderId: string;
-  orderNo: string;
-  amount: number;
-}
 
 @Entry
 @Component
@@ -40,12 +36,17 @@ struct PaymentPage {
   }
 
   build() {
-    Column() {
-      this.buildHeader();
-      this.buildOrderInfo();
-      this.buildChannelList();
-      Blank();
-      this.buildPayButton();
+    Stack({ alignContent: Alignment.Center }) {
+      Column() {
+        this.buildHeader();
+        this.buildOrderInfo();
+        this.buildChannelList();
+        Blank();
+        this.buildPayButton();
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor('#f5f5f5')
 
       if (this.showResult && this.payResult !== null) {
         this.buildResultDialog();
@@ -53,7 +54,6 @@ struct PaymentPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#f5f5f5')
   }
 
   @Builder
@@ -128,19 +128,21 @@ struct PaymentPage {
         Text(channel.desc)
           .fontSize(12)
           .fontColor('#999')
-          .margin({ top: 4 })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
-      Radio({ value: channel.method, group: 'paymentGroup' })
-        .checked(this.selectedMethod === channel.method)
-        .onChange((checked: boolean) => {
-          if (checked) {
-            this.selectedMethod = channel.method;
-          }
-        })
-        .enabled(channel.enabled)
+      if (!channel.enabled) {
+        Text('暂不可用')
+          .fontSize(12)
+          .fontColor('#999')
+      } else {
+        if (this.selectedMethod === channel.method) {
+          Text('✓')
+            .fontSize(18)
+            .fontColor('#1677ff')
+        }
+      }
     }
     .width('100%')
     .padding({ top: 16, bottom: 16 })
@@ -226,7 +228,7 @@ struct PaymentPage {
             })
         }
 
-        Button(this.payResult !== null && this.payResult.status === PaymentResultStatus.SUCCESS ? '查看订单' : '返回订单列表')
+        Button(this.payResult !== null && this.payResult.status === PaymentResultStatus.SUCCESS ? '完成' : '返回')
           .width('100%')
           .height(44)
           .fontSize(16)
@@ -235,77 +237,64 @@ struct PaymentPage {
           .borderRadius(22)
           .margin({ top: 12 })
           .onClick(() => {
-            router.replaceUrl({ url: 'pages/OrderListPage' });
+            if (this.payResult !== null && this.payResult.status === PaymentResultStatus.SUCCESS) {
+              OrderRefreshUtil.trigger();
+            }
+            router.back();
           })
       }
       .width('85%')
       .padding(24)
       .backgroundColor(Color.White)
       .borderRadius(16)
+      .shadow({ radius: 20, color: '#00000020' })
+      .alignItems(HorizontalAlign.Center)
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('rgba(0,0,0,0.5)')
     .justifyContent(FlexAlign.Center)
-    .alignItems(HorizontalAlign.Center)
+    .backgroundColor('#00000050')
   }
 
-  private getErrorMsg(): string {
+  getFailedMsg(): string {
     if (this.payResult !== null && this.payResult.errorMsg !== undefined) {
-      return this.payResult.errorMsg;
-    }
-    return '请稍后在订单列表查看结果';
-  }
-
-  private getFailedMsg(): string {
-    if (this.payResult !== null && this.payResult.errorMsg !== undefined && this.payResult.errorMsg.length > 0) {
       return this.payResult.errorMsg;
     }
     return '支付失败，请重试';
   }
 
-  private buildErrorResult(orderId: string, orderNo: string, message: string): PaymentResult {
-    const result: PaymentResult = {
-      paymentId: '',
-      orderId: orderId,
-      orderNo: orderNo,
-      status: PaymentResultStatus.FAILED,
-      errorMsg: message
-    };
-    return result;
+  getErrorMsg(): string {
+    if (this.payResult !== null && this.payResult.errorMsg !== undefined) {
+      return this.payResult.errorMsg;
+    }
+    return '请等待支付结果...';
   }
 
-  async doPay() {
+  async doPay(): Promise<void> {
     if (this.isPaying) {
       return;
     }
-
     this.isPaying = true;
-    Logger.info(TAG, 'Starting payment: orderId=%{public}s, method=%{public}s',
-      this.orderId, this.selectedMethod);
-
     try {
-      const result: PaymentResult = await PaymentManager.getInstance().pay(this.orderId, this.selectedMethod);
+      const manager: PaymentManager = PaymentManager.getInstance();
+      const result: PaymentResult = await manager.pay(this.orderId, this.selectedMethod);
       this.payResult = result;
       this.showResult = true;
-
       if (result.status === PaymentResultStatus.SUCCESS) {
-        promptAction.showToast({ message: '支付成功', duration: 2000 });
-      } else if (result.status === PaymentResultStatus.FAILED) {
-        const errCode: string = result.errorCode !== undefined ? result.errorCode : '';
-        const errMsg: string = result.errorMsg !== undefined ? result.errorMsg : '';
-        Logger.warn(TAG, 'Payment failed: %{public}s - %{public}s', errCode, errMsg);
+        Logger.info(TAG, '支付成功: %{public}s', this.orderId);
       }
     } catch (e) {
-      Logger.error(TAG, 'Payment exception');
-      let errMsg: string = '支付异常';
-      if (e instanceof Error) {
-        errMsg = e.message;
-      }
-      this.payResult = this.buildErrorResult(this.orderId, this.orderNo, errMsg);
+      this.payResult = {
+        paymentId: '',
+        orderId: this.orderId,
+        orderNo: this.orderNo,
+        status: PaymentResultStatus.FAILED,
+        errorCode: 'UNKNOWN',
+        errorMsg: '支付异常，请重试'
+      };
       this.showResult = true;
-    } finally {
-      this.isPaying = false;
+      Logger.error(TAG, '支付异常: %{public}s', JSON.stringify(e));
     }
+    this.isPaying = false;
   }
 }

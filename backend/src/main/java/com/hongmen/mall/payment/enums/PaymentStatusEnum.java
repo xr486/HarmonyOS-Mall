@@ -1,5 +1,6 @@
 package com.hongmen.mall.payment.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
@@ -12,6 +13,7 @@ public enum PaymentStatusEnum {
     CLOSED("closed", "已关闭"),
     REFUNDED("refunded", "已退款");
 
+    @JsonValue
     private final String code;
     private final String desc;
 

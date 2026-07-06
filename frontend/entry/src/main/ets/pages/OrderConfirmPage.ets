@@ -5,6 +5,7 @@ import { CartItem, Address, Order } from '../common/models';
 import router from '@ohos.router';
 import promptAction from '@ohos.promptAction';
 import { Logger } from '../common/utils/logger/Logger';
+import { OrderRefreshUtil } from '../common/utils/OrderRefreshUtil';
 
 const TAG = 'OrderConfirmPage';
 
@@ -157,6 +158,7 @@ struct OrderConfirmPage {
         this.remark
       );
       if (order && order.orderId) {
+        OrderRefreshUtil.trigger();
         promptAction.showToast({ message: '下单成功' });
         router.replaceUrl({
           url: 'pages/OrderDetailPage',

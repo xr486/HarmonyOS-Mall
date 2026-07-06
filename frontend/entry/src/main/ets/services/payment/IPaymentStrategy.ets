@@ -26,8 +26,10 @@ export abstract class BasePaymentStrategy implements IPaymentStrategy {
   }
 
   protected buildSuccessResult(payParams: PayResponseParams, transactionNo?: string): PaymentResult {
-    const result = this.buildResult(payParams, PaymentResultStatus.PROCESSING);
+    const result = this.buildResult(payParams, PaymentResultStatus.SUCCESS);
     result.transactionNo = transactionNo;
+    result.paidAmount = payParams.payParams['amount'] !== undefined ? Number(payParams.payParams['amount']) : undefined;
+    result.paidAt = Date.now();
     return result;
   }
 
