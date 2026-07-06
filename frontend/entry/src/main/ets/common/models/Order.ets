@@ -1,4 +1,3 @@
-import { Address } from './Address';
 import { PaymentMethod, PaymentStatus, PaymentInfo } from './Payment';
 
 export enum OrderStatus {
@@ -26,10 +25,12 @@ export interface Order {
   totalAmount: number;
   status: OrderStatus;
   items: OrderItem[];
-  address: Address;
+  address: string;
+  addressId?: string;
   payment?: PaymentInfo;
   remark?: string;
   createdAt: number;
+  updatedAt?: number;
   paidAt?: number;
   completedAt?: number;
   expireTime: number;

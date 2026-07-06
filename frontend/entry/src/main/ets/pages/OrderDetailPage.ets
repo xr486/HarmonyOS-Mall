@@ -1,0 +1,455 @@
+import { OrderService } from '../services/order/OrderService';
+import { Order, OrderItem, OrderStatus } from '../common/models';
+import router from '@ohos.router';
+import promptAction from '@ohos.promptAction';
+
+function getStatusText(status: OrderStatus): string {
+  if (status === OrderStatus.PENDING_PAYMENT) return '待付款';
+  if (status === OrderStatus.PENDING_SHIPMENT) return '待发货';
+  if (status === OrderStatus.PENDING_RECEIPT) return '待收货';
+  if (status === OrderStatus.COMPLETED) return '已完成';
+  if (status === OrderStatus.CANCELLED) return '已取消';
+  return '未知';
+}
+
+function getStatusColor(status: OrderStatus): string {
+  if (status === OrderStatus.PENDING_PAYMENT) return '#FF4D4F';
+  if (status === OrderStatus.PENDING_SHIPMENT) return '#FAAD14';
+  if (status === OrderStatus.PENDING_RECEIPT) return '#1890FF';
+  if (status === OrderStatus.COMPLETED) return '#52C41A';
+  if (status === OrderStatus.CANCELLED) return '#999';
+  return '#999';
+}
+
+function formatTime(timestamp: number): string {
+  if (!timestamp || timestamp <= 0) return '';
+  return new Date(timestamp).toLocaleString();
+}
+
+@Entry
+@Component
+struct OrderDetailPage {
+  @State order: Order | null = null;
+  @State isLoading: boolean = true;
+  private orderId: string = '';
+
+  aboutToAppear(): void {
+    const params: Record<string, Object> = router.getParams() as Record<string, Object>;
+    if (params && params['orderId']) {
+      this.orderId = params['orderId'] as string;
+      this.loadDetail();
+    }
+  }
+
+  async loadDetail(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const service: OrderService = OrderService.getInstance();
+      const result: Order | null = await service.getOrderDetail(this.orderId);
+      this.order = result;
+    } catch (e) {
+      this.order = null;
+    }
+    this.isLoading = false;
+  }
+
+  async cancelOrder(): Promise<void> {
+    if (!this.order) return;
+    const service: OrderService = OrderService.getInstance();
+    const success: boolean = await service.cancelOrder(this.order.orderId);
+    if (success) {
+      promptAction.showToast({ message: '订单已取消' });
+      this.loadDetail();
+    } else {
+      promptAction.showToast({ message: '取消失败，请重试' });
+    }
+  }
+
+  async confirmReceipt(): Promise<void> {
+    if (!this.order) return;
+    const service: OrderService = OrderService.getInstance();
+    const success: boolean = await service.confirmReceipt(this.order.orderId);
+    if (success) {
+      promptAction.showToast({ message: '确认收货成功' });
+      this.loadDetail();
+    } else {
+      promptAction.showToast({ message: '操作失败，请重试' });
+    }
+  }
+
+  @Builder
+  NavBar() {
+    Row() {
+      Text('‹')
+        .fontSize(28)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#333')
+        .onClick(() => router.back())
+
+      Text('订单详情')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#333')
+        .layoutWeight(1)
+        .textAlign(TextAlign.Center)
+
+      Text('')
+        .width(36)
+    }
+    .width('100%')
+    .height(48)
+    .padding({ left: 16, right: 16 })
+    .backgroundColor(Color.White)
+  }
+
+  @Builder
+  StatusCard() {
+    Column() {
+      Row() {
+        Text('订单状态')
+          .fontSize(14)
+          .fontColor('#666')
+        Text(getStatusText(this.order!.status))
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(getStatusColor(this.order!.status))
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.SpaceBetween)
+
+      Text(`订单号：${this.order!.orderNo}`)
+        .fontSize(13)
+        .fontColor('#999')
+        .margin({ top: 10 })
+        .width('100%')
+
+      Text(`下单时间：${formatTime(this.order!.createdAt)}`)
+        .fontSize(13)
+        .fontColor('#999')
+        .margin({ top: 4 })
+        .width('100%')
+
+      if (this.order!.status === OrderStatus.PENDING_PAYMENT && this.order!.expireTime > 0) {
+        Text(`支付截止：${formatTime(this.order!.expireTime)}`)
+          .fontSize(13)
+          .fontColor('#FF4D4F')
+          .margin({ top: 4 })
+          .width('100%')
+      }
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(Color.White)
+    .borderRadius(10)
+    .margin({ bottom: 10 })
+  }
+
+  @Builder
+  AddressCard() {
+    Column() {
+      Row() {
+        Text('收货地址')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#333')
+      }
+      .width('100%')
+      .margin({ bottom: 10 })
+
+      if (this.order!.address && this.order!.address.length > 0) {
+        Text(this.order!.address)
+          .fontSize(13)
+          .fontColor('#666')
+          .width('100%')
+          .lineHeight(20)
+      } else {
+        Text('暂无地址信息')
+          .fontSize(13)
+          .fontColor('#999')
+          .width('100%')
+      }
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(Color.White)
+    .borderRadius(10)
+    .margin({ bottom: 10 })
+  }
+
+  @Builder
+  LogisticsCard() {
+    Column() {
+      Row() {
+        Text('物流状态')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#333')
+        Text(this.order!.status === OrderStatus.PENDING_SHIPMENT ? '待发货'
+          : this.order!.status === OrderStatus.PENDING_RECEIPT ? '运输中'
+            : this.order!.status === OrderStatus.COMPLETED ? '已签收'
+              : '-')
+          .fontSize(13)
+          .fontColor('#666')
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.SpaceBetween)
+      .margin({ bottom: 8 })
+
+      Text('物流信息将在商家发货后更新')
+        .fontSize(13)
+        .fontColor('#999')
+        .width('100%')
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(Color.White)
+    .borderRadius(10)
+    .margin({ bottom: 10 })
+  }
+
+  @Builder
+  ProductCard() {
+    Column() {
+      Text('商品信息')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#333')
+        .margin({ bottom: 12 })
+        .width('100%')
+
+      ForEach(this.order!.items, (item: OrderItem, index: number) => {
+        Row() {
+          Image(item.productImage || '')
+            .width(88)
+            .height(88)
+            .objectFit(ImageFit.Cover)
+            .borderRadius(8)
+            .alt($r('app.media.app_icon'))
+
+          Column() {
+            Text(item.productName)
+              .fontSize(14)
+              .fontColor('#333')
+              .maxLines(2)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
+
+            Blank()
+              .layoutWeight(1)
+
+            Row() {
+              Text(`¥${item.price}`)
+                .fontSize(16)
+                .fontWeight(FontWeight.Bold)
+                .fontColor('#FF4D4F')
+
+              Text(`x${item.quantity}`)
+                .fontSize(13)
+                .fontColor('#999')
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.SpaceBetween)
+            .alignItems(VerticalAlign.Center)
+            .margin({ top: 6 })
+          }
+          .layoutWeight(1)
+          .height(88)
+          .margin({ left: 10 })
+          .alignItems(HorizontalAlign.Start)
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+      }, (item: OrderItem, index: number) => item.itemId + '_' + index)
+
+      Divider().color('#EEE').margin({ top: 8, bottom: 8 })
+
+      Row() {
+        Text('商品总价')
+          .fontSize(13)
+          .fontColor('#666')
+        Text(`¥${this.order!.totalAmount.toFixed(2)}`)
+          .fontSize(13)
+          .fontColor('#333')
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.SpaceBetween)
+      .margin({ bottom: 6 })
+
+      Row() {
+        Text('运费')
+          .fontSize(13)
+          .fontColor('#666')
+        Text('免运费')
+          .fontSize(13)
+          .fontColor('#333')
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.SpaceBetween)
+      .margin({ bottom: 6 })
+
+      Row() {
+        Text('合计')
+          .fontSize(14)
+          .fontColor('#333')
+          .layoutWeight(1)
+        Text(`¥${this.order!.totalAmount.toFixed(2)}`)
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FF4D4F')
+      }
+      .width('100%')
+      .padding({ top: 4, bottom: 4 })
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(Color.White)
+    .borderRadius(10)
+    .margin({ bottom: 10 })
+  }
+
+  @Builder
+  PaymentCard() {
+    Column() {
+      Row() {
+        Text('支付信息')
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#333')
+        Text(this.order!.payment ? '已支付' : '未支付')
+          .fontSize(13)
+          .fontColor(this.order!.payment ? '#52C41A' : '#FF4D4F')
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.SpaceBetween)
+      .margin({ bottom: 8 })
+
+      if (this.order!.payment) {
+        Text(`支付方式：${this.order!.payment.methodText || '未知'}`)
+          .fontSize(13)
+          .fontColor('#666')
+          .width('100%')
+          .margin({ bottom: 4 })
+
+        Text(`支付金额：¥${this.order!.payment.amount.toFixed(2)}`)
+          .fontSize(13)
+          .fontColor('#666')
+          .width('100%')
+          .margin({ bottom: 4 })
+
+        Text(`支付时间：${formatTime(this.order!.payment.paidAt ?? 0)}`)
+          .fontSize(13)
+          .fontColor('#666')
+          .width('100%')
+      }
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(Color.White)
+    .borderRadius(10)
+    .margin({ bottom: 10 })
+  }
+
+  @Builder
+  RemarkCard() {
+    Column() {
+      Text('订单备注')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#333')
+        .margin({ bottom: 8 })
+        .width('100%')
+
+      Text(this.order!.remark && this.order!.remark.length > 0 ? this.order!.remark : '无备注')
+        .fontSize(13)
+        .fontColor('#666')
+        .width('100%')
+    }
+    .width('100%')
+    .padding(16)
+    .backgroundColor(Color.White)
+    .borderRadius(10)
+    .margin({ bottom: 10 })
+  }
+
+  build() {
+    Column() {
+      this.NavBar()
+
+      if (this.isLoading) {
+        Column() {
+          LoadingProgress().width(36).height(36).color('#FF4D4F')
+          Text('加载中...').fontSize(14).fontColor('#999').margin({ top: 12 })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F5F5F5')
+      } else if (!this.order) {
+        Column() {
+          Text('订单不存在').fontSize(16).fontColor('#999')
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F5F5F5')
+      } else {
+        Scroll() {
+          Column() {
+            this.StatusCard()
+            this.AddressCard()
+            this.LogisticsCard()
+            this.ProductCard()
+            this.PaymentCard()
+            this.RemarkCard()
+          }
+          .padding({ left: 12, right: 12, top: 12, bottom: 80 })
+          .width('100%')
+        }
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .backgroundColor('#F5F5F5')
+
+        if (this.order.status === OrderStatus.PENDING_PAYMENT ||
+            this.order.status === OrderStatus.PENDING_RECEIPT) {
+          Row() {
+            if (this.order.status === OrderStatus.PENDING_PAYMENT) {
+              Button('取消订单')
+                .fontSize(14)
+                .fontColor('#666')
+                .backgroundColor('#F5F5F5')
+                .borderRadius(22)
+                .height(40)
+                .width(120)
+                .margin({ right: 12 })
+                .onClick(() => this.cancelOrder())
+            }
+
+            Button(this.order.status === OrderStatus.PENDING_PAYMENT ? '立即付款' : '确认收货')
+              .fontSize(14)
+              .backgroundColor('#FF4D4F')
+              .fontColor(Color.White)
+              .borderRadius(22)
+              .height(40)
+              .width(160)
+              .onClick(() => {
+                if (this.order!.status === OrderStatus.PENDING_PAYMENT) {
+                  // 跳转支付（由支付模块处理）
+                  promptAction.showToast({ message: '请调用支付功能' });
+                } else {
+                  this.confirmReceipt();
+                }
+              })
+          }
+          .width('100%')
+          .height(64)
+          .justifyContent(FlexAlign.End)
+          .padding({ right: 16 })
+          .backgroundColor(Color.White)
+        }
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#F5F5F5')
+  }
+}

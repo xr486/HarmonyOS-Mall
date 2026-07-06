@@ -769,7 +769,16 @@ struct CartTab {
             .enabled(this.getSelectedCount() > 0)
             .onClick(() => {
               if (this.getSelectedCount() > 0) {
-                router.pushUrl({ url: 'pages/OrderListPage' });
+                const selectedIds: string[] = [];
+                for (let i: number = 0; i < this.cartItems.length; i++) {
+                  if (this.cartItems[i].selected) {
+                    selectedIds.push(this.cartItems[i].cartId);
+                  }
+                }
+                router.pushUrl({
+                  url: 'pages/OrderConfirmPage',
+                  params: { cartIds: selectedIds }
+                });
               }
             })
         }
@@ -854,6 +863,9 @@ struct CartTab {
 struct OrderTab {
   @State orders: Order[] = [];
   @State isLoading: boolean = true;
+  @State activeTab: number = 0;
+
+  private tabItems: string[] = ['全部', '待付款', '待发货', '待收货', '已完成', '已取消'];
 
   aboutToAppear(): void {
     this.loadOrders();
@@ -863,12 +875,18 @@ struct OrderTab {
     this.isLoading = true;
     try {
       const service: OrderService = OrderService.getInstance();
-      const allOrders: Order[] = await service.getAllOrders('default_user');
+      const status: number = this.activeTab;
+      const allOrders: Order[] = await service.getAllOrders('default_user', status === 0 ? undefined : status - 1);
       this.orders = allOrders;
     } catch (e) {
       this.orders = [];
     }
     this.isLoading = false;
+  }
+
+  onTabChanged(index: number): void {
+    this.activeTab = index;
+    this.loadOrders();
   }
 
   getStatusText(status: number): string {
@@ -879,8 +897,144 @@ struct OrderTab {
     return '已取消';
   }
 
+  getStatusColor(status: number): string {
+    if (status === 0) { return '#FF4D4F'; }
+    if (status === 1) { return '#FAAD14'; }
+    if (status === 2) { return '#1890FF'; }
+    if (status === 3) { return '#52C41A'; }
+    return '#999';
+  }
+
+  getItemCount(order: Order): number {
+    if (!order.items || order.items.length === 0) {
+      return 0;
+    }
+    let count: number = 0;
+    for (let i: number = 0; i < order.items.length; i++) {
+      count += order.items[i].quantity;
+    }
+    return count;
+  }
+
+  goToDetail(orderId: string): void {
+    router.pushUrl({
+      url: 'pages/OrderDetailPage',
+      params: { orderId: orderId }
+    });
+  }
+
+  @Builder
+  OrderCard(order: Order) {
+    Column() {
+      Row() {
+        Text(`订单号: ${order.orderNo}`)
+          .fontSize(13)
+          .fontColor('#666')
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
+
+        Text(this.getStatusText(order.status))
+          .fontSize(13)
+          .fontColor(this.getStatusColor(order.status))
+      }
+      .width('100%')
+      .height(36)
+      .alignItems(VerticalAlign.Center)
+
+      Divider().color('#F0F0F0').strokeWidth(1)
+
+      if (order.items && order.items.length > 0) {
+        ForEach(order.items.slice(0, 2), (item: OrderItem) => {
+          Row() {
+            Image(item.productImage || '')
+              .width(88)
+              .height(88)
+              .objectFit(ImageFit.Cover)
+              .borderRadius(8)
+              .alt($r('app.media.app_icon'))
+
+            Column() {
+              Text(item.productName)
+                .fontSize(14)
+                .fontColor('#333')
+                .maxLines(2)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .width('100%')
+
+              Blank()
+                .layoutWeight(1)
+
+              Row() {
+                Text(`¥${item.price}`)
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#FF4D4F')
+
+                Text(`x${item.quantity}`)
+                  .fontSize(13)
+                  .fontColor('#999')
+              }
+              .width('100%')
+              .justifyContent(FlexAlign.SpaceBetween)
+              .alignItems(VerticalAlign.Center)
+              .margin({ top: 6 })
+            }
+            .layoutWeight(1)
+            .height(88)
+            .margin({ left: 10 })
+            .alignItems(HorizontalAlign.Start)
+          }
+          .width('100%')
+          .alignItems(VerticalAlign.Center)
+        }, (item: OrderItem) => item.itemId)
+      }
+
+      if (order.items && order.items.length > 2) {
+        Text(`等 ${order.items.length} 件商品`)
+          .fontSize(12)
+          .fontColor('#999')
+          .width('100%')
+          .textAlign(TextAlign.End)
+          .margin({ top: 4, bottom: 4 })
+      }
+
+      Divider().color('#F0F0F0').strokeWidth(1)
+
+      Row() {
+        Text(`共 ${this.getItemCount(order)} 件商品`)
+          .fontSize(13)
+          .fontColor('#666')
+
+        Text(' 合计: ')
+          .fontSize(13)
+          .fontColor('#666')
+        Text(`¥${order.totalAmount}`)
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FF4D4F')
+      }
+      .width('100%')
+      .height(40)
+      .justifyContent(FlexAlign.End)
+      .alignItems(VerticalAlign.Center)
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor(Color.White)
+    .borderRadius(10)
+    .margin({ bottom: 10 })
+    .onClick(() => { this.goToDetail(order.orderId); })
+  }
+
   build() {
     Column() {
+      // 状态栏 + 标题
+      Row()
+        .width('100%')
+        .height(12)
+        .backgroundColor(Color.White)
+
       Text('我的订单')
         .fontSize(18)
         .fontWeight(FontWeight.Medium)
@@ -888,7 +1042,37 @@ struct OrderTab {
         .height(48)
         .textAlign(TextAlign.Center)
         .backgroundColor(Color.White)
-        .padding({ top: 36 })
+
+      Row() {
+        ForEach(this.tabItems, (label: string, index: number) => {
+          Column() {
+            Text(label)
+              .fontSize(13)
+              .fontColor(this.activeTab === index ? '#FF4D4F' : '#333')
+              .fontWeight(this.activeTab === index ? FontWeight.Medium : FontWeight.Normal)
+              .padding({ top: 8, bottom: 6 })
+
+            if (this.activeTab === index) {
+              Row()
+                .width(16)
+                .height(3)
+                .backgroundColor('#FF4D4F')
+                .borderRadius(2)
+            } else {
+              Row()
+                .width(16)
+                .height(3)
+                .backgroundColor(Color.Transparent)
+            }
+          }
+          .onClick(() => { this.onTabChanged(index); })
+        }, (label: string, index: number) => label + '_' + index)
+      }
+      .width('100%')
+      .height(40)
+      .padding({ left: 8, right: 8 })
+      .backgroundColor(Color.White)
+      .justifyContent(FlexAlign.SpaceAround)
 
       if (this.isLoading) {
         Column() {
@@ -898,6 +1082,7 @@ struct OrderTab {
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F5F5F5')
       } else if (this.orders.length === 0) {
         Column() {
           Text('暂无订单').fontSize(16).fontColor('#999')
@@ -905,69 +1090,16 @@ struct OrderTab {
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F5F5F5')
       } else {
-        Scroll() {
-          Column() {
-            ForEach(this.orders, (order: Order) => {
-              Column() {
-                Row() {
-                  Text(`订单号: ${order.orderNo}`)
-                    .fontSize(13)
-                    .fontColor('#666')
-                  Text(this.getStatusText(order.status))
-                    .fontSize(13)
-                    .fontColor('#FF4D4F')
-                }
-                .width('100%')
-                .justifyContent(FlexAlign.SpaceBetween)
-
-                if (order.items && order.items.length > 0) {
-                  ForEach(order.items.slice(0, 3), (item: OrderItem) => {
-                    Row() {
-                      Image(item.productImage)
-                        .width(64)
-                        .height(64)
-                        .borderRadius(4)
-                        .alt($r('app.media.app_icon'))
-                      Column() {
-                        Text(item.productName)
-                          .maxLines(2)
-                          .textOverflow({ overflow: TextOverflow.Ellipsis })
-                        Text(`¥${item.price}  x${item.quantity}`)
-                          .fontSize(13)
-                          .fontColor('#999')
-                          .margin({ top: 4 })
-                      }
-                      .layoutWeight(1)
-                      .margin({ left: 10 })
-                      .alignItems(HorizontalAlign.Start)
-                    }
-                    .width('100%')
-                    .margin({ top: 8 })
-                  }, (item: OrderItem) => item.itemId)
-                }
-
-                Row() {
-                  Text(`共 ${order.items ? order.items.length : 0} 件 合计: `)
-                    .fontSize(13)
-                    .fontColor('#666')
-                  Text(`¥${order.totalAmount}`)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#FF4D4F')
-                }
-                .width('100%')
-                .justifyContent(FlexAlign.End)
-                .margin({ top: 10 })
-              }
-              .width('100%')
-              .padding(14)
-              .backgroundColor(Color.White)
-              .borderRadius(10)
-              .margin({ bottom: 8 })
-            }, (order: Order) => order.orderId)
-          }
-          .padding(12)
-          .width('100%')
+          Scroll() {
+            Column() {
+              ForEach(this.orders, (order: Order) => {
+                this.OrderCard(order)
+              }, (order: Order) => order.orderId)
+            }
+            .padding({ left: 12, right: 12, bottom: 12 })
+            .width('100%')
         }
         .layoutWeight(1)
         .scrollBar(BarState.Off)
