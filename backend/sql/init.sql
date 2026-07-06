@@ -162,6 +162,36 @@ CREATE TABLE `payment` (
   KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付流水表';
 
+-- ----------------------------
+-- 9. 商品评价表
+-- ----------------------------
+CREATE TABLE `review` (
+  `review_id` VARCHAR(64) NOT NULL COMMENT '评价ID',
+  `product_id` VARCHAR(64) NOT NULL COMMENT '商品ID',
+  `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
+  `user_name` VARCHAR(50) COMMENT '用户昵称',
+  `rating` INT NOT NULL COMMENT '评分(1-5)',
+  `content` TEXT COMMENT '评价内容',
+  `images` TEXT COMMENT '评价图片(逗号分隔)',
+  `created_at` BIGINT NOT NULL COMMENT '创建时间',
+  PRIMARY KEY (`review_id`),
+  KEY `idx_product_id` (`product_id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商品评价表';
+
+-- ----------------------------
+-- 10. 商品收藏表
+-- ----------------------------
+CREATE TABLE `favorite` (
+  `favorite_id` VARCHAR(64) NOT NULL COMMENT '收藏ID',
+  `user_id` VARCHAR(64) NOT NULL COMMENT '用户ID',
+  `product_id` VARCHAR(64) NOT NULL COMMENT '商品ID',
+  `created_at` BIGINT NOT NULL COMMENT '收藏时间',
+  PRIMARY KEY (`favorite_id`),
+  UNIQUE KEY `uk_user_product` (`user_id`, `product_id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商品收藏表';
+
 -- ============================================================
 -- 初始测试数据
 -- ============================================================

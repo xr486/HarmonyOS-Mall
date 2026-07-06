@@ -8,3 +8,5 @@ export * from './Order';
 export * from './Payment';
 export * from './PaymentTypes';
 export * from './Recommendation';
+export * from './Review';
+export * from './Favorite';
