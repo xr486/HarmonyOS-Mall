@@ -4,7 +4,7 @@ import { Logger } from '../../common/utils/logger/Logger';
 
 const TAG = 'ProductService';
 
-interface ProductResponse {
+export interface ProductResponse {
   productId: string;
   name: string;
   description: string;
@@ -40,7 +40,7 @@ interface ProductRequest {
   createdAt: number;
 }
 
-function convertToProduct(item: ProductResponse): Product {
+export function convertToProduct(item: ProductResponse): Product {
   let imagesArray: string[] = [];
   if (item.images) {
     try {

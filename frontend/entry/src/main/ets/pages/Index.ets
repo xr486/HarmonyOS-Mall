@@ -1,10 +1,12 @@
 import { ProductService } from '../services/product/ProductService';
 import { CategoryService } from '../services/product/CategoryService';
+import { HomepageService } from '../services/product/HomepageService';
+import { RecommendationTrackService } from '../services/product/RecommendationTrackService';
 import { CartService } from '../services/cart/CartService';
 import { OrderService } from '../services/order/OrderService';
 import { UserService } from '../services/user/UserService';
 import { AuthManager } from '../services/auth/AuthManager';
-import { Product, Category, CartItem, Order, OrderItem, User, RecommendationItem } from '../common/models';
+import { Product, Category, CartItem, Order, OrderItem, User } from '../common/models';
 import { ProductCard } from '../components/ProductCard';
 import { OrderRefreshUtil } from '../common/utils/OrderRefreshUtil';
 import router from '@ohos.router';
@@ -17,7 +19,8 @@ struct Index {
   @State tabUser: User | null = null;
   @State cartRefreshKey: number = 0;
   @State orderRefreshKey: number = 0;
-  private tabTitles: string[] = ['首页', '购物车', '订单', '我的'];
+  @State recommendRefreshKey: number = 0;
+  private tabTitles: string[] = ['首页', '推荐', '购物车', '订单', '我的'];
 
   aboutToAppear(): void {
     this.loadTabUser();
@@ -25,13 +28,17 @@ struct Index {
 
   onPageShow(): void {
     this.loadTabUser();
+    this.recommendRefreshKey++;
   }
 
   onTabChange(index: number): void {
     if (index === 1) {
-      this.cartRefreshKey++;
+      this.recommendRefreshKey++;
     }
     if (index === 2) {
+      this.cartRefreshKey++;
+    }
+    if (index === 3) {
       this.orderRefreshKey++;
     }
     this.currentTabIndex = index;
@@ -55,24 +62,29 @@ struct Index {
   build() {
     Tabs({ barPosition: BarPosition.End, index: this.currentTabIndex }) {
       TabContent() {
-        HomeTab()
+        HomeTab({ refreshKey: this.recommendRefreshKey })
       }
       .tabBar(this.TabBuilder(0))
 
       TabContent() {
-        CartTab({ refreshKey: this.cartRefreshKey })
+        RecommendTab({ refreshKey: this.recommendRefreshKey })
       }
       .tabBar(this.TabBuilder(1))
 
       TabContent() {
-        OrderTab({ refreshKey: this.orderRefreshKey })
+        CartTab({ refreshKey: this.cartRefreshKey })
       }
       .tabBar(this.TabBuilder(2))
 
       TabContent() {
-        UserTab({ userData: this.tabUser, onChangeLogout: () => { this.tabUser = null; } })
+        OrderTab({ refreshKey: this.orderRefreshKey })
       }
       .tabBar(this.TabBuilder(3))
+
+      TabContent() {
+        UserTab({ userData: this.tabUser, onChangeLogout: () => { this.tabUser = null; } })
+      }
+      .tabBar(this.TabBuilder(4))
     }
     .onChange((index: number) => {
       this.onTabChange(index);
@@ -103,15 +115,17 @@ struct Index {
 
 @Component
 struct HomeTab {
+  @Prop @Watch('onRefreshKeyChanged') refreshKey: number = 0;
   @State products: Product[] = [];
   @State categories: Category[] = [];
   @State isLoading: boolean = true;
   @State isRefreshing: boolean = false;
-  @State recommendations: RecommendationItem[] = [];
-  @State hasRecommendations: boolean = false;
-  @State hasMoreRecommendations: boolean = false;
 
   aboutToAppear(): void {
+    this.loadData();
+  }
+
+  onRefreshKeyChanged(): void {
     this.loadData();
   }
 
@@ -134,18 +148,12 @@ struct HomeTab {
   async refreshData(): Promise<void> {
     this.isRefreshing = true;
     try {
-      const RecommendationService = (await import('../services/product/RecommendationService')).RecommendationService;
-      const recService = RecommendationService.getInstance();
-      await recService.refreshRecommendations('default_user');
-      
       const catService: CategoryService = CategoryService.getInstance();
       const prodService: ProductService = ProductService.getInstance();
       const cats: Category[] = await catService.getAllCategories();
       const prods: Product[] = await prodService.getAllProducts();
       this.categories = cats.filter((c: Category) => !c.parentId);
       this.products = prods;
-      
-      await this.loadRecommendations();
     } catch (e) {
       this.products = [];
       this.categories = [];
@@ -153,18 +161,9 @@ struct HomeTab {
     this.isRefreshing = false;
   }
 
-  async loadRecommendations(): Promise<void> {
-    try {
-      const RecommendationService = (await import('../services/product/RecommendationService')).RecommendationService;
-      const recService = RecommendationService.getInstance();
-      const recs = await recService.getRecommendations('default_user');
-      this.hasMoreRecommendations = recs.length > 4;
-      this.recommendations = recs.slice(0, 4);
-      this.hasRecommendations = this.recommendations.length > 0;
-    } catch (e) {
-      this.recommendations = [];
-      this.hasRecommendations = false;
-    }
+  trackProductClick(productId: string, index: number): void {
+    const trackService: RecommendationTrackService = RecommendationTrackService.getInstance();
+    trackService.trackClick(productId, 'mixed', index, 'homepage');
   }
 
   build() {
@@ -254,56 +253,12 @@ struct HomeTab {
       } else {
         Scroll() {
           Column() {
-            if (this.hasRecommendations) {
-              Column() {
-                Row() {
-                  Text('为你推荐')
-                    .fontSize(16)
-                    .fontWeight(FontWeight.Bold)
-                    .fontColor('#333')
-                  if (this.hasMoreRecommendations) {
-                    Text('更多 ›')
-                      .fontSize(12)
-                      .fontColor('#FF4D4F')
-                      .onClick(() => {
-                        router.pushUrl({ url: 'pages/RecommendationPage' });
-                      })
-                  } else {
-                    Text('点击刷新更新')
-                      .fontSize(12)
-                      .fontColor('#999')
-                  }
-                }
-                .width('100%')
-                .justifyContent(FlexAlign.SpaceBetween)
-                .padding({ left: 12, right: 12, bottom: 8 })
-
-                Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-                  ForEach(this.recommendations, (rec: RecommendationItem) => {
-                    ProductCard({
-                      product: rec.product,
-                      showRecommendTag: true,
-                      onCardClick: () => {
-                        router.pushUrl({
-                          url: 'pages/ProductDetailPage',
-                          params: { productId: rec.product.productId }
-                        });
-                      }
-                    })
-                  }, (rec: RecommendationItem) => rec.product.productId)
-                }
-                .padding({ left: 8, right: 8 })
-                .width('100%')
-
-                Divider().width('100%').margin({ top: 12, bottom: 12 })
-              }
-            }
-
             Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-              ForEach(this.products, (product: Product) => {
+              ForEach(this.products, (product: Product, index: number) => {
                 ProductCard({
                   product: product,
                   onCardClick: () => {
+                    this.trackProductClick(product.productId, index);
                     router.pushUrl({
                       url: 'pages/ProductDetailPage',
                       params: { productId: product.productId }
@@ -348,6 +303,105 @@ function cloneCartItem(
   if (newSelected !== undefined) { out.selected = newSelected; }
   if (newQuantity !== undefined) { out.quantity = newQuantity; }
   return out;
+}
+
+@Component
+struct RecommendTab {
+  @Prop @Watch('onRefreshKeyChanged') refreshKey: number = 0;
+  @State products: Product[] = [];
+  @State isLoading: boolean = true;
+
+  aboutToAppear(): void {
+    this.loadData();
+  }
+
+  onRefreshKeyChanged(): void {
+    this.loadData();
+  }
+
+  async loadData(): Promise<void> {
+    this.isLoading = true;
+    try {
+      const homepageService: HomepageService = HomepageService.getInstance();
+      let prods: Product[] = await homepageService.getHomepageRecommendations('default_user');
+      if (prods.length === 0) {
+        prods = await homepageService.getHotProducts(20);
+      }
+      this.products = prods;
+    } catch (e) {
+      this.products = [];
+    }
+    this.isLoading = false;
+  }
+
+  trackClick(productId: string, index: number): void {
+    const trackService: RecommendationTrackService = RecommendationTrackService.getInstance();
+    trackService.trackClick(productId, 'recommend_tab', index, 'recommend');
+  }
+
+  build() {
+    Column() {
+      Row() {
+        Text('为你推荐')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#333')
+        Text('根据浏览记录匹配同类商品')
+          .fontSize(12)
+          .fontColor('#999')
+          .margin({ left: 8 })
+      }
+      .width('100%')
+      .padding({ left: 16, right: 16, top: 12, bottom: 8 })
+      .backgroundColor(Color.White)
+
+      if (this.isLoading) {
+        Column() {
+          LoadingProgress().width(36).height(36).color('#FF4D4F')
+          Text('加载推荐中...').fontSize(14).fontColor('#999').margin({ top: 12 })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F5F5F5')
+      } else if (this.products.length === 0) {
+        Column() {
+          Text('暂无推荐')
+            .fontSize(16).fontColor('#999')
+          Text('浏览商品后为你推荐同类好物')
+            .fontSize(13).fontColor('#BBB').margin({ top: 8 })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F5F5F5')
+      } else {
+        Scroll() {
+          Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
+            ForEach(this.products, (product: Product, index: number) => {
+              ProductCard({
+                product: product,
+                onCardClick: () => {
+                  this.trackClick(product.productId, index);
+                  router.pushUrl({
+                    url: 'pages/ProductDetailPage',
+                    params: { productId: product.productId }
+                  });
+                }
+              })
+            }, (product: Product) => product.productId)
+          }
+          .padding({ left: 8, right: 8, top: 8 })
+          .width('100%')
+        }
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .backgroundColor('#F5F5F5')
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
 }
 
 @Component
