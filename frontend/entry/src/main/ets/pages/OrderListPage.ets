@@ -26,7 +26,9 @@ struct OrderListPage {
   @State isLoading: boolean = true;
   @State activeTab: number = 0;
   @State searchKeyword: string = '';
+  @State timerTick: number = 0;
   @StorageLink(OrderRefreshUtil.getKey()) @Watch('onRefreshTriggered') refreshTrigger: number = 0;
+  private timerId: number = -1;
 
   private tabs: TabItem[] = [
     { label: '全部', status: 0 },
@@ -52,6 +54,34 @@ struct OrderListPage {
       }
     }
     this.loadOrders();
+    this.startTimer();
+  }
+
+  onPageShow(): void {
+    this.loadOrders();
+    this.startTimer();
+  }
+
+  onPageHide(): void {
+    this.stopTimer();
+  }
+
+  aboutToDisappear(): void {
+    this.stopTimer();
+  }
+
+  startTimer(): void {
+    this.stopTimer();
+    this.timerId = setInterval(() => {
+      this.timerTick++;
+    }, 1000);
+  }
+
+  stopTimer(): void {
+    if (this.timerId !== -1) {
+      clearInterval(this.timerId);
+      this.timerId = -1;
+    }
   }
 
   onRefreshTriggered(): void {
@@ -98,6 +128,28 @@ struct OrderListPage {
     if (status === OrderStatus.CANCELLED) { return '#999999'; }
     if (status === OrderStatus.EXPIRED) { return '#999999'; }
     return '#999999';
+  }
+
+  formatCountdown(expireTime: number, tick: number): string {
+    const now: number = Date.now();
+    const remain: number = expireTime - now;
+    if (remain <= 0) return '已超时';
+    const min: number = Math.floor(remain / 60000);
+    const sec: number = Math.floor((remain % 60000) / 1000);
+    const mm: string = min < 10 ? '0' + min : String(min);
+    const ss: string = sec < 10 ? '0' + sec : String(sec);
+    return mm + ':' + ss + ' 后失效';
+  }
+
+  async deleteOrder(order: Order, index: number): Promise<void> {
+    this.orders.splice(index, 1);
+    promptAction.showToast({ message: '订单已删除' });
+
+    try {
+      const service: OrderService = OrderService.getInstance();
+      await service.deleteOrder(order.orderId);
+    } catch (e) {
+    }
   }
 
   goToDetail(order: Order): void {
@@ -254,6 +306,15 @@ struct OrderListPage {
       .height(36)
       .alignItems(VerticalAlign.Center)
 
+      if (order.status === OrderStatus.PENDING_PAYMENT) {
+        Text('⏳ ' + this.formatCountdown(order.expireTime, this.timerTick))
+          .fontSize(12)
+          .fontColor('#FF9500')
+          .width('100%')
+          .textAlign(TextAlign.End)
+          .margin({ bottom: 4 })
+      }
+
       Divider().color('#F0F0F0').strokeWidth(1)
 
       if (order.items && order.items.length > 0) {
@@ -375,9 +436,21 @@ struct OrderListPage {
             .borderRadius(16)
             .height(32)
             .padding({ left: 16, right: 16 })
+            .margin({ right: 8 })
             .onClick(() => {
               promptAction.showToast({ message: '评价功能开发中，感谢您的耐心等待' });
             })
+        }
+
+        if (order.status === OrderStatus.CANCELLED || order.status === OrderStatus.EXPIRED) {
+          Button('删除订单')
+            .fontSize(13)
+            .fontColor('#999')
+            .backgroundColor('#F5F5F5')
+            .borderRadius(16)
+            .height(32)
+            .padding({ left: 16, right: 16 })
+            .onClick(() => this.deleteOrder(order, index))
         }
       }
       .width('100%')

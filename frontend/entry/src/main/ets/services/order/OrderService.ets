@@ -197,4 +197,26 @@ export class OrderService {
       return false;
     }
   }
+
+  async deleteOrder(orderId: string): Promise<boolean> {
+    try {
+      const res: ApiResponse<Object> = await HttpUtil.delete('/orders/' + orderId);
+      Logger.info(TAG, 'deleteOrder code=%{public}d', res.code);
+      return res.code === 200;
+    } catch (e) {
+      Logger.error(TAG, 'deleteOrder error: %{public}s', JSON.stringify(e));
+      return false;
+    }
+  }
+
+  async shipOrder(orderId: string): Promise<boolean> {
+    try {
+      const res: ApiResponse<Object> = await HttpUtil.put('/orders/' + orderId + '/ship');
+      Logger.info(TAG, 'shipOrder code=%{public}d', res.code);
+      return res.code === 200;
+    } catch (e) {
+      Logger.error(TAG, 'shipOrder error: %{public}s', JSON.stringify(e));
+      return false;
+    }
+  }
 }

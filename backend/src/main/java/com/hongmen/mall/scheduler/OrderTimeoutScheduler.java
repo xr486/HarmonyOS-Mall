@@ -30,9 +30,9 @@ public class OrderTimeoutScheduler {
     private final ProductRepository productRepository;
 
     /**
-     * 每10秒执行一次：扫描超时的待付款订单并标记为已超时
+     * 每分钟执行一次：扫描超时的待付款订单并标记为已超时
      */
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 60000)
     @Transactional
     public void cancelExpiredOrders() {
         long now = System.currentTimeMillis();

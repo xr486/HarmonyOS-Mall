@@ -40,13 +40,26 @@ function formatTime(timestamp: number): string {
 struct OrderDetailPage {
   @State order: Order | null = null;
   @State isLoading: boolean = true;
+  @State timerTick: number = 0;
   @StorageLink(OrderRefreshUtil.getKey()) @Watch('onRefreshTriggered') refreshTrigger: number = 0;
   private orderId: string = '';
+  private timerId: number = -1;
 
   onRefreshTriggered(): void {
     if (this.orderId.length > 0) {
       this.silentReload();
     }
+  }
+
+  onPageShow(): void {
+    if (this.orderId.length > 0) {
+      this.silentReload();
+    }
+    this.startTimer();
+  }
+
+  onPageHide(): void {
+    this.stopTimer();
   }
 
   aboutToAppear(): void {
@@ -56,12 +69,36 @@ struct OrderDetailPage {
       this.orderId = pageParams.orderId;
       this.loadDetail();
     }
+    this.startTimer();
   }
 
-  onPageShow(): void {
-    if (this.orderId.length > 0) {
-      this.silentReload();
+  aboutToDisappear(): void {
+    this.stopTimer();
+  }
+
+  startTimer(): void {
+    this.stopTimer();
+    this.timerId = setInterval(() => {
+      this.timerTick++;
+    }, 1000);
+  }
+
+  stopTimer(): void {
+    if (this.timerId !== -1) {
+      clearInterval(this.timerId);
+      this.timerId = -1;
     }
+  }
+
+  formatCountdown(expireTime: number, tick: number): string {
+    const now: number = Date.now();
+    const remain: number = expireTime - now;
+    if (remain <= 0) return '已超时';
+    const min: number = Math.floor(remain / 60000);
+    const sec: number = Math.floor((remain % 60000) / 1000);
+    const mm: string = min < 10 ? '0' + min : String(min);
+    const ss: string = sec < 10 ? '0' + sec : String(sec);
+    return mm + ':' + ss + ' 后失效';
   }
 
   async silentReload(): Promise<void> {
@@ -132,6 +169,32 @@ struct OrderDetailPage {
     // TODO: 跳转到评价页面
   }
 
+  async deleteOrder(): Promise<void> {
+    if (!this.order) return;
+    const service: OrderService = OrderService.getInstance();
+    const success: boolean = await service.deleteOrder(this.order.orderId);
+    if (success) {
+      OrderRefreshUtil.trigger();
+      promptAction.showToast({ message: '订单已删除' });
+      router.back();
+    } else {
+      promptAction.showToast({ message: '操作失败，请重试' });
+    }
+  }
+
+  async shipOrder(): Promise<void> {
+    if (!this.order) return;
+    const service: OrderService = OrderService.getInstance();
+    const success: boolean = await service.shipOrder(this.order.orderId);
+    if (success) {
+      OrderRefreshUtil.trigger();
+      promptAction.showToast({ message: '已发货' });
+      this.loadDetail();
+    } else {
+      promptAction.showToast({ message: '操作失败，请重试' });
+    }
+  }
+
   @Builder
   NavBar() {
     Row() {
@@ -188,6 +251,12 @@ struct OrderDetailPage {
         Text(`支付截止：${formatTime(this.order!.expireTime)}`)
           .fontSize(13)
           .fontColor('#FF4D4F')
+          .margin({ top: 4 })
+          .width('100%')
+        Text('⏳ 剩余时间：' + this.formatCountdown(this.order!.expireTime, this.timerTick))
+          .fontSize(14)
+          .fontColor('#FF9500')
+          .fontWeight(FontWeight.Medium)
           .margin({ top: 4 })
           .width('100%')
       }
@@ -378,15 +447,21 @@ struct OrderDetailPage {
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor('#333')
-        Text(this.order!.status !== OrderStatus.PENDING_PAYMENT && this.order!.status !== OrderStatus.CANCELLED ? '已支付' : '未支付')
+        Text(this.order!.status !== OrderStatus.PENDING_PAYMENT &&
+          this.order!.status !== OrderStatus.CANCELLED &&
+          this.order!.status !== OrderStatus.EXPIRED ? '已支付' : '未支付')
           .fontSize(13)
-          .fontColor(this.order!.status !== OrderStatus.PENDING_PAYMENT && this.order!.status !== OrderStatus.CANCELLED ? '#52C41A' : '#FF4D4F')
+          .fontColor(this.order!.status !== OrderStatus.PENDING_PAYMENT &&
+            this.order!.status !== OrderStatus.CANCELLED &&
+            this.order!.status !== OrderStatus.EXPIRED ? '#52C41A' : '#FF4D4F')
       }
       .width('100%')
       .justifyContent(FlexAlign.SpaceBetween)
       .margin({ bottom: 8 })
 
-      if (this.order!.status !== OrderStatus.PENDING_PAYMENT && this.order!.status !== OrderStatus.CANCELLED) {
+      if (this.order!.status !== OrderStatus.PENDING_PAYMENT &&
+        this.order!.status !== OrderStatus.CANCELLED &&
+        this.order!.status !== OrderStatus.EXPIRED) {
         Text(`支付金额：¥${this.order!.totalAmount.toFixed(2)}`)
           .fontSize(13)
           .fontColor('#666')
@@ -469,8 +544,11 @@ struct OrderDetailPage {
         .backgroundColor('#F5F5F5')
 
         if (this.order.status === OrderStatus.PENDING_PAYMENT ||
+            this.order.status === OrderStatus.PENDING_SHIPMENT ||
             this.order.status === OrderStatus.PENDING_RECEIPT ||
-            this.order.status === OrderStatus.COMPLETED) {
+            this.order.status === OrderStatus.COMPLETED ||
+            this.order.status === OrderStatus.CANCELLED ||
+            this.order.status === OrderStatus.EXPIRED) {
           Row() {
             if (this.order.status === OrderStatus.PENDING_PAYMENT) {
               Button('取消订单')
@@ -484,23 +562,50 @@ struct OrderDetailPage {
                 .onClick(() => this.cancelOrder())
             }
 
-            Button(this.order.status === OrderStatus.PENDING_PAYMENT ? '立即付款' :
-              (this.order.status === OrderStatus.COMPLETED ? '去评价' : '确认收货'))
-              .fontSize(14)
-              .backgroundColor('#FF4D4F')
-              .fontColor(Color.White)
-              .borderRadius(22)
-              .height(40)
-              .width(160)
-              .onClick(() => {
-                if (this.order!.status === OrderStatus.PENDING_PAYMENT) {
-                  this.goToPayment();
-                } else if (this.order!.status === OrderStatus.COMPLETED) {
-                  this.goToReview();
-                } else {
-                  this.confirmReceipt();
-                }
-              })
+            if (this.order.status === OrderStatus.PENDING_SHIPMENT) {
+              Button('模拟发货')
+                .fontSize(14)
+                .fontColor('#666')
+                .backgroundColor('#F5F5F5')
+                .borderRadius(22)
+                .height(40)
+                .width(120)
+                .margin({ right: 12 })
+                .onClick(() => this.shipOrder())
+            }
+
+            if (this.order.status !== OrderStatus.PENDING_PAYMENT &&
+              this.order.status !== OrderStatus.PENDING_SHIPMENT) {
+              Button('删除订单')
+                .fontSize(14)
+                .fontColor('#999')
+                .backgroundColor('#F5F5F5')
+                .borderRadius(22)
+                .height(40)
+                .width(120)
+                .margin({ right: 12 })
+                .onClick(() => this.deleteOrder())
+            }
+
+            if (this.order.status !== OrderStatus.PENDING_SHIPMENT) {
+              Button(this.order.status === OrderStatus.PENDING_PAYMENT ? '立即付款' :
+                (this.order.status === OrderStatus.COMPLETED ? '去评价' : '确认收货'))
+                .fontSize(14)
+                .backgroundColor('#FF4D4F')
+                .fontColor(Color.White)
+                .borderRadius(22)
+                .height(40)
+                .width(160)
+                .onClick(() => {
+                  if (this.order!.status === OrderStatus.PENDING_PAYMENT) {
+                    this.goToPayment();
+                  } else if (this.order!.status === OrderStatus.COMPLETED) {
+                    this.goToReview();
+                  } else if (this.order!.status === OrderStatus.PENDING_RECEIPT) {
+                    this.confirmReceipt();
+                  }
+                })
+            }
           }
           .width('100%')
           .height(64)

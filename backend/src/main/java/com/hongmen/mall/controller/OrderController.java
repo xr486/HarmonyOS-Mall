@@ -145,7 +145,7 @@ public class OrderController {
 
             // 创建订单
             long now = System.currentTimeMillis();
-            long expireTime = now + 30 * 1000; // 30秒支付超时（测试用）
+            long expireTime = now + 30 * 60 * 1000; // 30分钟支付超时
             Order order = new Order();
             order.setOrderId(UUID.randomUUID().toString());
             order.setUserId(userId);
@@ -251,6 +251,50 @@ public class OrderController {
             order.setStatus("completed");
             order.setCompletedAt(now);
             order.setUpdatedAt(now);
+            orderRepository.save(order);
+            return Result.success(order);
+        }).orElse(Result.error(404, "订单不存在"));
+    }
+
+    @DeleteMapping("/{orderId}")
+    @Transactional
+    public Result<String> deleteOrder(@PathVariable String orderId,
+                                      HttpServletRequest request) {
+        String userId = getUserId(request);
+        if (userId == null) return Result.error(401, "未登录");
+        return orderRepository.findById(orderId).map(order -> {
+            if (!order.getUserId().equals(userId))
+                return Result.<String>error(403, "无权限");
+            // 待付款或已超时订单删除前恢复库存
+            if ("pending_payment".equals(order.getStatus()) || "expired".equals(order.getStatus())) {
+                List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+                for (OrderItem item : items) {
+                    productRepository.findById(item.getProductId()).ifPresent(product -> {
+                        product.setStock(product.getStock() + item.getQuantity());
+                        product.setUpdatedAt(System.currentTimeMillis());
+                        productRepository.save(product);
+                    });
+                }
+            }
+            orderItemRepository.deleteByOrderId(orderId);
+            orderRepository.delete(order);
+            return Result.success("删除成功");
+        }).orElse(Result.error(404, "订单不存在"));
+    }
+
+    @PutMapping("/{orderId}/ship")
+    @Transactional
+    public Result<Order> shipOrder(@PathVariable String orderId,
+                                   HttpServletRequest request) {
+        String userId = getUserId(request);
+        if (userId == null) return Result.error(401, "未登录");
+        return orderRepository.findById(orderId).map(order -> {
+            if (!order.getUserId().equals(userId))
+                return Result.<Order>error(403, "无权限");
+            if (!"pending_shipment".equals(order.getStatus()))
+                return Result.<Order>error(400, "仅待发货订单可发货");
+            order.setStatus("pending_receipt");
+            order.setUpdatedAt(System.currentTimeMillis());
             orderRepository.save(order);
             return Result.success(order);
         }).orElse(Result.error(404, "订单不存在"));

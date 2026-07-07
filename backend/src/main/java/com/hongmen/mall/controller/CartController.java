@@ -92,6 +92,40 @@ public class CartController {
         }).orElse(Result.error(404, "购物车项不存在"));
     }
 
+    @PutMapping("/select-all")
+    public Result<String> selectAll(@RequestBody Map<String, Object> body,
+                                    HttpServletRequest request) {
+        String userId = getUserId(request);
+        if (userId == null) return Result.error(401, "未登录");
+        boolean selected = (Boolean) body.getOrDefault("selected", true);
+
+        List<CartItem> items = cartItemRepository.findByUserId(userId);
+        for (CartItem item : items) {
+            item.setChecked(selected);
+            item.setUpdatedAt(System.currentTimeMillis());
+        }
+        cartItemRepository.saveAll(items);
+        return Result.success(selected ? "已全选" : "已取消全选");
+    }
+
+    @PutMapping("/{cartId}/select")
+    public Result<CartItem> updateChecked(@PathVariable String cartId,
+                                          @RequestBody Map<String, Object> body,
+                                          HttpServletRequest request) {
+        String userId = getUserId(request);
+        if (userId == null) return Result.error(401, "未登录");
+
+        return cartItemRepository.findById(cartId).map(item -> {
+            if (!item.getUserId().equals(userId)) {
+                return Result.<CartItem>error(403, "无权限");
+            }
+            item.setChecked((Boolean) body.get("selected"));
+            item.setUpdatedAt(System.currentTimeMillis());
+            cartItemRepository.save(item);
+            return Result.success(item);
+        }).orElse(Result.error(404, "购物车项不存在"));
+    }
+
     @DeleteMapping("/clear")
     public Result<String> clearCart(HttpServletRequest request) {
         String userId = getUserId(request);

@@ -387,10 +387,12 @@ struct OrderConfirmPage {
           }
           .padding({ bottom: 12 })
           .width('100%')
+          .justifyContent(FlexAlign.Start)
         }
         .layoutWeight(1)
         .scrollBar(BarState.Off)
         .backgroundColor('#F5F5F5')
+        .align(Alignment.Top)
 
         Column() {
           Divider().color('#EEE').strokeWidth(1)

@@ -431,6 +431,10 @@ struct CartTab {
     this.loadCart();
   }
 
+  onPageShow(): void {
+    this.loadCart();
+  }
+
   async loadCart(): Promise<void> {
     this.isLoading = true;
     try {
@@ -932,7 +936,9 @@ struct OrderTab {
   @State orders: Order[] = [];
   @State isLoading: boolean = true;
   @State activeTab: number = 0;
+  @State timerTick: number = 0;
   private isInitialized: boolean = false;
+  private timerId: number = -1;
 
   private tabItems: string[] = ['全部', '待付款', '待发货', '待收货', '已完成', '已取消', '已超时'];
 
@@ -951,6 +957,45 @@ struct OrderTab {
   aboutToAppear(): void {
     this.isInitialized = true;
     this.loadOrders();
+    this.startTimer();
+  }
+
+  onPageShow(): void {
+    this.loadOrders();
+    this.startTimer();
+  }
+
+  onPageHide(): void {
+    this.stopTimer();
+  }
+
+  aboutToDisappear(): void {
+    this.stopTimer();
+  }
+
+  startTimer(): void {
+    this.stopTimer();
+    this.timerId = setInterval(() => {
+      this.timerTick++;
+    }, 1000);
+  }
+
+  stopTimer(): void {
+    if (this.timerId !== -1) {
+      clearInterval(this.timerId);
+      this.timerId = -1;
+    }
+  }
+
+  formatCountdown(expireTime: number, tick: number): string {
+    const now: number = Date.now();
+    const remain: number = expireTime - now;
+    if (remain <= 0) return '已超时';
+    const min: number = Math.floor(remain / 60000);
+    const sec: number = Math.floor((remain % 60000) / 1000);
+    const mm: string = min < 10 ? '0' + min : String(min);
+    const ss: string = sec < 10 ? '0' + sec : String(sec);
+    return mm + ':' + ss + ' 后失效';
   }
 
   async loadOrders(): Promise<void> {
@@ -1027,6 +1072,15 @@ struct OrderTab {
       .width('100%')
       .height(36)
       .alignItems(VerticalAlign.Center)
+
+      if (order.status === 0) {
+        Text('⏳ ' + this.formatCountdown(order.expireTime, this.timerTick))
+          .fontSize(12)
+          .fontColor('#FF9500')
+          .width('100%')
+          .textAlign(TextAlign.End)
+          .margin({ bottom: 4 })
+      }
 
       Divider().color('#F0F0F0').strokeWidth(1)
 
@@ -1206,6 +1260,11 @@ struct UserTab {
 
   build() {
     Column() {
+      Row()
+        .width('100%')
+        .height(12)
+        .backgroundColor(Color.White)
+
       Text('我的')
         .fontSize(18)
         .fontWeight(FontWeight.Medium)
@@ -1213,7 +1272,6 @@ struct UserTab {
         .height(48)
         .textAlign(TextAlign.Center)
         .backgroundColor(Color.White)
-        .padding({ top: 36 })
 
       Scroll() {
         Column() {
@@ -1323,10 +1381,12 @@ struct UserTab {
         }
         .padding(12)
         .width('100%')
+        .justifyContent(FlexAlign.Start)
       }
       .layoutWeight(1)
       .backgroundColor('#F5F5F5')
       .scrollBar(BarState.Off)
+      .align(Alignment.Top)
     }
     .width('100%')
     .height('100%')

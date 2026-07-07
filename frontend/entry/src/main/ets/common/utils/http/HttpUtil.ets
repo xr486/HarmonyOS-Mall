@@ -45,16 +45,13 @@ export class AddCartBody {
 
 export class UpdateCartBody {
   quantity: number = 1;
-  checked: boolean = false;
 }
 
-export class UpdateCartCheckedBody {
-  checked: boolean = false;
-}
-
-/** 只更新数量（不携带 checked 字段，避免误重置选中状态） */
-export class UpdateCartQuantityBody {
-  quantity: number = 1;
+export class SelectCartBody {
+  selected: boolean = false;
+  constructor(selected: boolean) {
+    this.selected = selected;
+  }
 }
 
 export class CreateOrderBody {

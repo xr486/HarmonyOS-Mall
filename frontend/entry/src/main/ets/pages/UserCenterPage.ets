@@ -62,65 +62,65 @@ struct UserCenterPage {
 
       Scroll() {
         Column() {
-        Row() {
-          Column() {
-            Circle()
-              .width(64)
-              .height(64)
-              .fill('#FF4D4F')
-          }
-          .onClick(() => {
-            if (this.user) {
-              router.pushUrl({ url: 'pages/UserInfo' });
-            } else {
-              router.pushUrl({ url: 'pages/Login' });
+          Row() {
+            Column() {
+              Circle()
+                .width(64)
+                .height(64)
+                .fill('#FF4D4F')
             }
-          })
-          Column() {
-            Text(this.user ? this.user.nickname : '未登录')
-              .fontSize(20)
-              .fontWeight(FontWeight.Bold)
-            Text(this.user ? this.user.phone : '点击登录')
-              .fontSize(14)
-              .fontColor('#999999')
-              .margin({ top: 4 })
-          }
-          .margin({ left: 16 })
-          .alignItems(HorizontalAlign.Start)
-          .onClick(() => {
-            if (this.user) {
-              router.pushUrl({ url: 'pages/UserInfo' });
-            } else {
-              router.pushUrl({ url: 'pages/Login' });
+            .onClick(() => {
+              if (this.user) {
+                router.pushUrl({ url: 'pages/UserInfo' });
+              } else {
+                router.pushUrl({ url: 'pages/Login' });
+              }
+            })
+            Column() {
+              Text(this.user ? this.user.nickname : '未登录')
+                .fontSize(20)
+                .fontWeight(FontWeight.Bold)
+              Text(this.user ? this.user.phone : '点击登录')
+                .fontSize(14)
+                .fontColor('#999999')
+                .margin({ top: 4 })
             }
-          })
-        }
-        .width('100%')
-        .padding(20)
-        .backgroundColor(Color.White)
-        .borderRadius(12)
-        .margin({ bottom: 10 })
+            .margin({ left: 16 })
+            .alignItems(HorizontalAlign.Start)
+            .onClick(() => {
+              if (this.user) {
+                router.pushUrl({ url: 'pages/UserInfo' });
+              } else {
+                router.pushUrl({ url: 'pages/Login' });
+              }
+            })
+          }
+          .width('100%')
+          .padding(20)
+          .backgroundColor(Color.White)
+          .borderRadius(12)
+          .margin({ bottom: 10 })
 
-        Column() {
-          MenuItem({ icon: '📦', title: '我的订单', desc: '查看全部订单' })
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/OrderListPage' });
-            })
-          Divider().margin({ left: 50 })
-          MenuItem({ icon: '📍', title: '收货地址', desc: '管理收货地址' })
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/AddressList' });
-            })
-          Divider().margin({ left: 50 })
-          MenuItem({ icon: '❤️', title: '我的收藏', desc: '收藏的商品' })
-            .onClick(() => {
-              router.pushUrl({ url: 'pages/FavoritePage' });
-            })
-        }
-        .width('100%')
-        .backgroundColor(Color.White)
-        .borderRadius(12)
-        .margin({ bottom: 10 })
+          Column() {
+            MenuItem({ icon: '📦', title: '我的订单', desc: '查看全部订单' })
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/OrderListPage' });
+              })
+            Divider().margin({ left: 50 })
+            MenuItem({ icon: '📍', title: '收货地址', desc: '管理收货地址' })
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/AddressList' });
+              })
+            Divider().margin({ left: 50 })
+            MenuItem({ icon: '❤️', title: '我的收藏', desc: '收藏的商品' })
+              .onClick(() => {
+                router.pushUrl({ url: 'pages/FavoritePage' });
+              })
+          }
+          .width('100%')
+          .backgroundColor(Color.White)
+          .borderRadius(12)
+          .margin({ bottom: 10 })
 
           Column() {
             MenuItem({ icon: '⚙️', title: '设置', desc: '账号与安全' })
@@ -147,10 +147,12 @@ struct UserCenterPage {
         }
         .padding(12)
         .width('100%')
+        .justifyContent(FlexAlign.Start)
       }
       .layoutWeight(1)
       .backgroundColor('#F5F5F5')
       .scrollBar(BarState.Off)
+      .align(Alignment.Top)
     }
     .width('100%')
     .height('100%')
