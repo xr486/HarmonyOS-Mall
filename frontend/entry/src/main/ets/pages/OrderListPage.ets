@@ -209,80 +209,97 @@ struct OrderListPage {
   OrderItemView(order: Order, index: number) {
     Column() {
       Row() {
+        Text(`订单号: ${order.orderNo}`)
+          .fontSize(13)
+          .fontColor('#666')
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
+
         Text(this.getStatusText(order.status))
           .fontSize(13)
           .fontColor(this.getStatusColor(order.status))
-          .layoutWeight(1)
       }
       .width('100%')
-      .padding({ bottom: 8 })
+      .height(36)
+      .alignItems(VerticalAlign.Center)
+
+      Divider().color('#F0F0F0').strokeWidth(1)
 
       if (order.items && order.items.length > 0) {
-        Row() {
-          Image(order.items[0].productImage || '')
-            .width(72)
-            .height(72)
-            .objectFit(ImageFit.Cover)
-            .borderRadius(6)
-            .alt($r('app.media.app_icon'))
+        ForEach(order.items.slice(0, 3), (item: OrderItem) => {
+          Row() {
+            Image(item.productImage || '')
+              .width(88)
+              .height(88)
+              .objectFit(ImageFit.Cover)
+              .borderRadius(8)
+              .alt($r('app.media.app_icon'))
 
-          Column() {
-            Text(order.items[0].productName || '')
-              .fontSize(14)
-              .fontColor('#333')
-              .maxLines(2)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .width('100%')
-
-            Blank()
-              .layoutWeight(1)
-
-            Row() {
-              Text(`¥${order.items[0].price.toFixed(2)}`)
+            Column() {
+              Text(item.productName)
                 .fontSize(14)
-                .fontWeight(FontWeight.Medium)
                 .fontColor('#333')
+                .maxLines(2)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .width('100%')
+
+              Blank()
                 .layoutWeight(1)
 
-              Text(`x${order.items[0].quantity}`)
-                .fontSize(13)
-                .fontColor('#999')
+              Row() {
+                Text(`¥${item.price}`)
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#FF4D4F')
+
+                Text(`x${item.quantity}`)
+                  .fontSize(13)
+                  .fontColor('#999')
+              }
+              .width('100%')
+              .justifyContent(FlexAlign.SpaceBetween)
+              .alignItems(VerticalAlign.Center)
+              .margin({ top: 6 })
             }
-            .width('100%')
+            .layoutWeight(1)
+            .height(88)
+            .margin({ left: 10 })
+            .alignItems(HorizontalAlign.Start)
           }
-          .layoutWeight(1)
-          .height(72)
-          .padding({ left: 10 })
-          .alignItems(HorizontalAlign.Start)
-        }
-        .width('100%')
-        .margin({ bottom: 8 })
+          .width('100%')
+          .alignItems(VerticalAlign.Center)
+        }, (item: OrderItem) => item.itemId)
       }
 
-      if (order.items && order.items.length > 1) {
-        Text(`共${order.items.length}件商品，合计¥${order.totalAmount.toFixed(2)}`)
+      if (order.items && order.items.length > 3) {
+        Text(`等 ${order.items.length} 件商品`)
           .fontSize(12)
           .fontColor('#999')
           .width('100%')
           .textAlign(TextAlign.End)
-          .margin({ bottom: 8 })
+          .margin({ top: 4, bottom: 4 })
       }
 
-      if (order.items.length <= 1) {
-        Row() {
-          Text('实付款')
-            .fontSize(12)
-            .fontColor('#666')
-          Text(`¥${order.totalAmount.toFixed(2)}`)
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#333')
-        }
-        .width('100%')
-        .justifyContent(FlexAlign.End)
-        .alignItems(VerticalAlign.Center)
-        .margin({ bottom: 8 })
+      Divider().color('#F0F0F0').strokeWidth(1)
+
+      Row() {
+        Text(`共 ${order.items ? order.items.length : 0} 件商品`)
+          .fontSize(13)
+          .fontColor('#666')
+
+        Text(' 合计: ')
+          .fontSize(13)
+          .fontColor('#666')
+        Text(`¥${order.totalAmount}`)
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FF4D4F')
       }
+      .width('100%')
+      .height(40)
+      .justifyContent(FlexAlign.End)
+      .alignItems(VerticalAlign.Center)
 
       Row() {
         Blank()
@@ -298,9 +315,7 @@ struct OrderListPage {
             .padding({ left: 16, right: 16 })
             .margin({ right: 8 })
             .onClick(() => this.cancelOrder(order, index))
-        }
 
-        if (order.status === OrderStatus.PENDING_PAYMENT) {
           Button('去支付')
             .fontSize(13)
             .fontColor(Color.White)
@@ -323,9 +338,11 @@ struct OrderListPage {
         }
       }
       .width('100%')
+      .height(44)
+      .justifyContent(FlexAlign.End)
     }
     .width('100%')
-    .padding(16)
+    .padding(12)
     .backgroundColor(Color.White)
     .borderRadius(10)
     .margin({ top: 10 })
@@ -371,10 +388,12 @@ struct OrderListPage {
           }
           .width('100%')
           .padding({ left: 12, right: 12, bottom: 12 })
+          .justifyContent(FlexAlign.Start)
         }
         .layoutWeight(1)
         .scrollBar(BarState.Off)
         .backgroundColor('#F5F5F5')
+        .align(Alignment.Top)
       }
     }
     .width('100%')
