@@ -96,8 +96,8 @@ export class HttpUtil {
     return await StorageUtil.getInstance().getString(StorageKeys.USER_TOKEN, '');
   }
 
-  static get<T>(url: string): Promise<ApiResponse<T>> {
-    return HttpUtil.request<T>(HttpUtil.BASE_URL + url, http.RequestMethod.GET);
+  static get<T>(url: string, extraHeaders?: Record<string, string>): Promise<ApiResponse<T>> {
+    return HttpUtil.request<T>(HttpUtil.BASE_URL + url, http.RequestMethod.GET, undefined, extraHeaders);
   }
 
   static post<T>(url: string, data?: Object): Promise<ApiResponse<T>> {
@@ -115,7 +115,8 @@ export class HttpUtil {
   private static async request<T>(
     url: string,
     method: http.RequestMethod,
-    data?: Object
+    data?: Object,
+    extraHeaders?: Record<string, string>
   ): Promise<ApiResponse<T>> {
     Logger.debug(TAG, 'Request: %{public}s %{public}s', http.RequestMethod[method], url);
 
@@ -128,6 +129,12 @@ export class HttpUtil {
       };
       if (token) {
         header['Authorization'] = 'Bearer ' + token;
+      }
+      if (extraHeaders) {
+        const keys: string[] = Object.keys(extraHeaders);
+        for (let i = 0; i < keys.length; i++) {
+          header[keys[i]] = extraHeaders[keys[i]];
+        }
       }
 
       const response: http.HttpResponse = await httpRequest.request(url, {

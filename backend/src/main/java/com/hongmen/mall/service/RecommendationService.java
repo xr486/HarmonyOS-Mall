@@ -88,42 +88,28 @@ public class RecommendationService {
     public List<Product> getSimilarProductsByLatestBrowse(String userId) {
         List<BrowsingRecord> latestRecords = browsingRecordRepository.findByUserIdOrderByTimestampDesc(userId);
         if (latestRecords.isEmpty()) {
-            return getHotProductRecommendations(TYPE_CONTENT).stream()
-                    .map(r -> productRepository.findById(r.getProductId()).orElse(null))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+            return Collections.emptyList();
         }
 
         String latestProductId = latestRecords.get(0).getProductId();
         Product latestProduct = productRepository.findById(latestProductId).orElse(null);
         if (latestProduct == null) {
-            return getHotProductRecommendations(TYPE_CONTENT).stream()
-                    .map(r -> productRepository.findById(r.getProductId()).orElse(null))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+            return Collections.emptyList();
         }
+
+        Set<String> browsedIds = latestRecords.stream()
+                .map(BrowsingRecord::getProductId)
+                .collect(Collectors.toSet());
 
         String categoryId = latestProduct.getCategoryId();
-        String brand = latestProduct.getBrand();
 
-        List<Product> similarProducts = productRepository.findByCategoryId(categoryId).stream()
+        return productRepository.findByCategoryId(categoryId).stream()
                 .filter(p -> !p.getProductId().equals(latestProductId))
-                .filter(p -> p.getBrand() != null && p.getBrand().equals(brand))
-                .sorted((a, b) -> Double.compare(b.getRating(), a.getRating()))
-                .limit(6)
+                .filter(p -> !browsedIds.contains(p.getProductId()))
+                .sorted(Comparator.comparing(Product::getRating, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(Product::getSalesCount, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(RECOMMENDATION_LIMIT)
                 .collect(Collectors.toList());
-
-        if (similarProducts.size() < 6) {
-            List<Product> moreProducts = productRepository.findByCategoryId(categoryId).stream()
-                    .filter(p -> !p.getProductId().equals(latestProductId))
-                    .filter(p -> !similarProducts.contains(p))
-                    .sorted((a, b) -> Double.compare(b.getRating(), a.getRating()))
-                    .limit(6 - similarProducts.size())
-                    .collect(Collectors.toList());
-            similarProducts.addAll(moreProducts);
-        }
-
-        return similarProducts;
     }
 
     @Transactional

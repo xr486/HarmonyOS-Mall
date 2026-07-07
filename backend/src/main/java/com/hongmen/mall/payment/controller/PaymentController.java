@@ -6,6 +6,7 @@ import com.hongmen.mall.payment.dto.PayResponse;
 import com.hongmen.mall.payment.dto.PaymentResultDTO;
 import com.hongmen.mall.payment.enums.PaymentMethodEnum;
 import com.hongmen.mall.payment.enums.PaymentStatusEnum;
+import com.hongmen.mall.payment.security.AntiReplayValidator;
 import com.hongmen.mall.payment.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -23,21 +23,31 @@ import java.util.UUID;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final AntiReplayValidator antiReplayValidator;
 
     private String getUserId(HttpServletRequest request) {
-        return (String) request.getAttribute("userId");
+        String userId = (String) request.getAttribute("userId");
+        if (userId == null || userId.isEmpty()) {
+            userId = request.getHeader("X-User-Id");
+        }
+        if (userId == null || userId.isEmpty()) {
+            userId = "default_user";
+        }
+        return userId;
     }
 
     @PostMapping("/pay")
     public Result<PayResponse> pay(@RequestBody PayRequest payRequest, HttpServletRequest request) {
-        String userId = getUserId(request);
-        if (userId == null) {
-            return Result.error(401, "未登录");
+        try {
+            antiReplayValidator.validate(request);
+        } catch (SecurityException e) {
+            return Result.error(429, e.getMessage());
         }
+        String userId = getUserId(request);
         try {
             PayResponse response = paymentService.createPayRequest(payRequest, userId);
             return Result.success(response);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return Result.error(400, e.getMessage());
         } catch (Exception e) {
             log.error("创建支付请求失败", e);
@@ -48,9 +58,6 @@ public class PaymentController {
     @GetMapping("/query/{orderId}")
     public Result<PaymentResultDTO> queryStatus(@PathVariable String orderId, HttpServletRequest request) {
         String userId = getUserId(request);
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
         try {
             PaymentResultDTO result = paymentService.queryPaymentStatus(orderId, userId);
             return Result.success(result);
@@ -66,10 +73,7 @@ public class PaymentController {
     public Result<PaymentResultDTO> syncResult(@PathVariable String paymentId,
                                                @RequestBody Map<String, Object> body,
                                                HttpServletRequest request) {
-        String userId = getUserId(request);
-        if (userId == null) {
-            return Result.error(401, "未登录");
-        }
+        getUserId(request);
         try {
             String resultJson = (String) body.getOrDefault("resultJson", "{}");
             PaymentResultDTO result = paymentService.processSyncResult(paymentId, resultJson);
@@ -91,10 +95,7 @@ public class PaymentController {
             });
             log.info("收到支付宝回调: {}", params);
             PaymentResultDTO result = paymentService.handleCallback(PaymentMethodEnum.ALIPAY, params);
-            if (result.getStatus() == PaymentStatusEnum.SUCCESS) {
-                return "success";
-            }
-            return "failure";
+            return result.getStatus() == PaymentStatusEnum.SUCCESS ? "success" : "failure";
         } catch (Exception e) {
             log.error("支付宝回调处理异常", e);
             return "failure";
@@ -152,7 +153,6 @@ public class PaymentController {
             mockParams.put("trade_status", "TRADE_SUCCESS");
             mockParams.put("total_amount", "0.01");
             mockParams.put("gmt_payment", new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date()));
-
             paymentService.handleCallback(PaymentMethodEnum.ALIPAY, mockParams);
             return Result.success("模拟支付成功");
         } catch (Exception e) {

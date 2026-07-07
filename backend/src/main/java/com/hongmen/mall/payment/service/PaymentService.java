@@ -53,6 +53,25 @@ public class PaymentService {
             throw new IllegalArgumentException("订单状态不允许支付: " + order.getStatus());
         }
 
+        List<Payment> successPayments = paymentRepository.findByOrderIdAndStatus(orderId, PaymentStatusEnum.SUCCESS.getCode());
+        if (!successPayments.isEmpty()) {
+            throw new IllegalStateException("该订单已支付成功，请勿重复支付");
+        }
+
+        List<Payment> processingPayments = paymentRepository.findByOrderIdAndStatus(orderId, PaymentStatusEnum.PROCESSING.getCode());
+        if (!processingPayments.isEmpty()) {
+            log.warn("订单存在正在处理的支付记录，返回已有记录: orderId={}", orderId);
+            Payment existingPayment = processingPayments.get(0);
+            PayResponse cachedResponse = PayResponse.builder()
+                    .paymentId(existingPayment.getPaymentId())
+                    .orderId(existingPayment.getOrderId())
+                    .paymentMethod(existingPayment.getMethod())
+                    .payParams(new java.util.HashMap<>())
+                    .orderStr("")
+                    .build();
+            return cachedResponse;
+        }
+
         List<Payment> oldPendingPayments = paymentRepository.findByOrderIdAndStatus(orderId, PaymentStatusEnum.PENDING.getCode());
         long now = System.currentTimeMillis();
         for (Payment old : oldPendingPayments) {
