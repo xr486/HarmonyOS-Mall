@@ -113,6 +113,9 @@ struct UserCenterPage {
             })
           Divider().margin({ left: 50 })
           MenuItem({ icon: '❤️', title: '我的收藏', desc: '收藏的商品' })
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/FavoritePage' });
+            })
         }
         .width('100%')
         .backgroundColor(Color.White)

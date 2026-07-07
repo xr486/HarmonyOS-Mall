@@ -28,6 +28,7 @@ function mapStatus(statusStr: string): OrderStatus {
   if (statusStr === 'shipped' || statusStr === 'pending_receipt') return OrderStatus.PENDING_RECEIPT;
   if (statusStr === 'completed') return OrderStatus.COMPLETED;
   if (statusStr === 'cancelled') return OrderStatus.CANCELLED;
+  if (statusStr === 'expired') return OrderStatus.EXPIRED;
   return OrderStatus.PENDING_PAYMENT;
 }
 
@@ -90,14 +91,22 @@ export class OrderService {
     if (status === OrderStatus.PENDING_RECEIPT) return 'pending_receipt';
     if (status === OrderStatus.COMPLETED) return 'completed';
     if (status === OrderStatus.CANCELLED) return 'cancelled';
+    if (status === OrderStatus.EXPIRED) return 'expired';
     return 'pending_payment';
   }
 
-  async getAllOrders(userId: string, status?: number): Promise<Order[]> {
+  async getAllOrders(userId: string, status?: number, keyword?: string): Promise<Order[]> {
     try {
       let url: string = '/orders';
+      const params: string[] = [];
       if (status !== undefined && status !== null) {
-        url = url + '?status=' + this.statusToString(status);
+        params.push('status=' + this.statusToString(status));
+      }
+      if (keyword && keyword.trim().length > 0) {
+        params.push('keyword=' + encodeURIComponent(keyword.trim()));
+      }
+      if (params.length > 0) {
+        url = url + '?' + params.join('&');
       }
       const res: ApiResponse<Object[]> = await HttpUtil.get(url);
       if (res.code === 200 && res.data) {

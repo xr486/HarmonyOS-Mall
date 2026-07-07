@@ -25,6 +25,7 @@ struct OrderListPage {
   @State orders: Order[] = [];
   @State isLoading: boolean = true;
   @State activeTab: number = 0;
+  @State searchKeyword: string = '';
   @StorageLink(OrderRefreshUtil.getKey()) @Watch('onRefreshTriggered') refreshTrigger: number = 0;
 
   private tabs: TabItem[] = [
@@ -33,7 +34,8 @@ struct OrderListPage {
     { label: '待发货', status: OrderStatus.PENDING_SHIPMENT },
     { label: '待收货', status: OrderStatus.PENDING_RECEIPT },
     { label: '已完成', status: OrderStatus.COMPLETED },
-    { label: '已取消', status: OrderStatus.CANCELLED }
+    { label: '已取消', status: OrderStatus.CANCELLED },
+    { label: '已超时', status: OrderStatus.EXPIRED }
   ];
 
   aboutToAppear(): void {
@@ -61,7 +63,10 @@ struct OrderListPage {
     try {
       const service: OrderService = OrderService.getInstance();
       const status: number = this.tabs[this.activeTab].status;
-      const allOrders: Order[] = await service.getAllOrders('default_user', status === 0 ? undefined : status);
+      const keyword: string = this.searchKeyword.trim().length > 0 ? this.searchKeyword : '';
+      const allOrders: Order[] = await service.getAllOrders('default_user',
+        status === 0 ? undefined : status,
+        keyword.length > 0 ? keyword : undefined);
       this.orders = allOrders;
     } catch (e) {
       this.orders = [];
@@ -81,6 +86,7 @@ struct OrderListPage {
     if (status === OrderStatus.PENDING_RECEIPT) { return '待收货'; }
     if (status === OrderStatus.COMPLETED) { return '已完成'; }
     if (status === OrderStatus.CANCELLED) { return '已取消'; }
+    if (status === OrderStatus.EXPIRED) { return '已超时'; }
     return '未知';
   }
 
@@ -90,6 +96,7 @@ struct OrderListPage {
     if (status === OrderStatus.PENDING_RECEIPT) { return '#1890FF'; }
     if (status === OrderStatus.COMPLETED) { return '#52C41A'; }
     if (status === OrderStatus.CANCELLED) { return '#999999'; }
+    if (status === OrderStatus.EXPIRED) { return '#999999'; }
     return '#999999';
   }
 
@@ -170,6 +177,29 @@ struct OrderListPage {
     .height(48)
     .padding({ left: 16, right: 16 })
     .backgroundColor(Color.White)
+  }
+
+  @Builder
+  SearchBar() {
+    Row() {
+      TextInput({ text: this.searchKeyword, placeholder: '搜索订单号或商品名称' })
+        .fontSize(13)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(16)
+        .height(32)
+        .layoutWeight(1)
+        .onChange((value: string) => {
+          this.searchKeyword = value;
+        })
+        .onSubmit(() => {
+          this.loadOrders();
+        })
+    }
+    .width('100%')
+    .height(44)
+    .padding({ left: 12, right: 12 })
+    .backgroundColor(Color.White)
+    .border({ width: { bottom: 0.5 }, color: '#EEEEEE' })
   }
 
   @Builder
@@ -336,6 +366,19 @@ struct OrderListPage {
             .padding({ left: 16, right: 16 })
             .onClick(() => this.confirmReceipt(order, index))
         }
+
+        if (order.status === OrderStatus.COMPLETED) {
+          Button('评价')
+            .fontSize(13)
+            .fontColor('#666')
+            .backgroundColor('#F5F5F5')
+            .borderRadius(16)
+            .height(32)
+            .padding({ left: 16, right: 16 })
+            .onClick(() => {
+              promptAction.showToast({ message: '评价功能开发中，感谢您的耐心等待' });
+            })
+        }
       }
       .width('100%')
       .height(44)
@@ -352,6 +395,7 @@ struct OrderListPage {
   build() {
     Column() {
       this.NavBar()
+      this.SearchBar()
       this.TabsBar()
 
       if (this.isLoading) {

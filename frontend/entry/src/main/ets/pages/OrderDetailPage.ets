@@ -16,6 +16,7 @@ function getStatusText(status: OrderStatus): string {
   if (status === OrderStatus.PENDING_RECEIPT) return '待收货';
   if (status === OrderStatus.COMPLETED) return '已完成';
   if (status === OrderStatus.CANCELLED) return '已取消';
+  if (status === OrderStatus.EXPIRED) return '已超时';
   return '未知';
 }
 
@@ -25,6 +26,7 @@ function getStatusColor(status: OrderStatus): string {
   if (status === OrderStatus.PENDING_RECEIPT) return '#1890FF';
   if (status === OrderStatus.COMPLETED) return '#52C41A';
   if (status === OrderStatus.CANCELLED) return '#999';
+  if (status === OrderStatus.EXPIRED) return '#999';
   return '#999';
 }
 
@@ -122,6 +124,12 @@ struct OrderDetailPage {
       url: RouteConstants.PAYMENT,
       params: payParams
     });
+  }
+
+  goToReview(): void {
+    if (!this.order) return;
+    promptAction.showToast({ message: '评价功能开发中，感谢您的耐心等待' });
+    // TODO: 跳转到评价页面
   }
 
   @Builder
@@ -461,7 +469,8 @@ struct OrderDetailPage {
         .backgroundColor('#F5F5F5')
 
         if (this.order.status === OrderStatus.PENDING_PAYMENT ||
-            this.order.status === OrderStatus.PENDING_RECEIPT) {
+            this.order.status === OrderStatus.PENDING_RECEIPT ||
+            this.order.status === OrderStatus.COMPLETED) {
           Row() {
             if (this.order.status === OrderStatus.PENDING_PAYMENT) {
               Button('取消订单')
@@ -475,7 +484,8 @@ struct OrderDetailPage {
                 .onClick(() => this.cancelOrder())
             }
 
-            Button(this.order.status === OrderStatus.PENDING_PAYMENT ? '立即付款' : '确认收货')
+            Button(this.order.status === OrderStatus.PENDING_PAYMENT ? '立即付款' :
+              (this.order.status === OrderStatus.COMPLETED ? '去评价' : '确认收货'))
               .fontSize(14)
               .backgroundColor('#FF4D4F')
               .fontColor(Color.White)
@@ -485,6 +495,8 @@ struct OrderDetailPage {
               .onClick(() => {
                 if (this.order!.status === OrderStatus.PENDING_PAYMENT) {
                   this.goToPayment();
+                } else if (this.order!.status === OrderStatus.COMPLETED) {
+                  this.goToReview();
                 } else {
                   this.confirmReceipt();
                 }

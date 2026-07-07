@@ -18,6 +18,7 @@
     "pages/RecommendationPage",
     "pages/OrderConfirmPage",
     "pages/OrderDetailPage",
-    "pages/PaymentPage"
+    "pages/PaymentPage",
+    "pages/FavoritePage"
   ]
 }
