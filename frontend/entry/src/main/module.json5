@@ -33,6 +33,21 @@
         ]
       }
     ],
+    "extensionAbilities": [
+      {
+        "name": "ServiceCardFormAbility",
+        "srcEntry": "./ets/formability/ServiceCardFormAbility.ets",
+        "type": "form",
+        "description": "$string:form_desc",
+        "exported": false,
+        "metadata": [
+          {
+            "name": "ohos.extension.form",
+            "resource": "$profile:form_config"
+          }
+        ]
+      }
+    ],
     "requestPermissions": [
       {
         "name": "ohos.permission.INTERNET"
@@ -56,6 +71,9 @@
           ],
           "when": "inuse"
         }
+      },
+      {
+        "name": "ohos.permission.REQUIRE_FORM"
       }
     ]
   }

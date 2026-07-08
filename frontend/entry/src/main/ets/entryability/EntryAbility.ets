@@ -18,7 +18,8 @@ export default class EntryAbility extends UIAbility {
     AppStorage.setOrCreate('abilityContext', this.context);
     AppStorage.setOrCreate('uiAbilityContext', this.context);
 
-    StorageUtil.getInstance().init(this.context);
+    // 使用 applicationContext 初始化存储，确保与 ServiceCardFormAbility 共享数据
+    StorageUtil.getInstance().init(this.context.getApplicationContext());
     LocationManager.getInstance().init(this.context);
 
     this.agcInitPromise = this.initAGC();

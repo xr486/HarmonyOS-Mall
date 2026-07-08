@@ -10,6 +10,13 @@ interface OrderDetailPageParams {
   orderId: string;
 }
 
+interface ReviewPageParams {
+  productId: string;
+  productName: string;
+  orderId: string;
+  orderItemId: string;
+}
+
 function getStatusText(status: OrderStatus): string {
   if (status === OrderStatus.PENDING_PAYMENT) return '待付款';
   if (status === OrderStatus.PENDING_SHIPMENT) return '待发货';
@@ -164,9 +171,36 @@ struct OrderDetailPage {
   }
 
   goToReview(): void {
+    if (this.order && this.order.items && this.order.items.length > 0) {
+      const firstItem = this.order.items[0];
+      const pageParams: ReviewPageParams = {
+        productId: firstItem.productId,
+        productName: firstItem.productName,
+        orderId: this.order!.orderId,
+        orderItemId: firstItem.itemId
+      };
+      router.pushUrl({
+        url: 'pages/ReviewPage',
+        params: pageParams
+      }).catch(() => {
+        promptAction.showToast({ message: '页面跳转失败' });
+      });
+    } else {
+      promptAction.showToast({ message: '订单数据未加载，请稍后再试' });
+    }
+  }
+
+  async shipOrder(): Promise<void> {
     if (!this.order) return;
-    promptAction.showToast({ message: '评价功能开发中，感谢您的耐心等待' });
-    // TODO: 跳转到评价页面
+    const service: OrderService = OrderService.getInstance();
+    const success: boolean = await service.shipOrder(this.order.orderId);
+    if (success) {
+      OrderRefreshUtil.trigger();
+      promptAction.showToast({ message: '模拟发货成功' });
+      this.loadDetail();
+    } else {
+      promptAction.showToast({ message: '操作失败' });
+    }
   }
 
   async deleteOrder(): Promise<void> {
@@ -177,19 +211,6 @@ struct OrderDetailPage {
       OrderRefreshUtil.trigger();
       promptAction.showToast({ message: '订单已删除' });
       router.back();
-    } else {
-      promptAction.showToast({ message: '操作失败，请重试' });
-    }
-  }
-
-  async shipOrder(): Promise<void> {
-    if (!this.order) return;
-    const service: OrderService = OrderService.getInstance();
-    const success: boolean = await service.shipOrder(this.order.orderId);
-    if (success) {
-      OrderRefreshUtil.trigger();
-      promptAction.showToast({ message: '已发货' });
-      this.loadDetail();
     } else {
       promptAction.showToast({ message: '操作失败，请重试' });
     }
@@ -384,14 +405,20 @@ struct OrderDetailPage {
             .alignItems(VerticalAlign.Center)
             .margin({ top: 6 })
           }
-          .layoutWeight(1)
-          .height(88)
-          .margin({ left: 10 })
-          .alignItems(HorizontalAlign.Start)
-        }
-        .width('100%')
-        .alignItems(VerticalAlign.Center)
-      }, (item: OrderItem, index: number) => item.itemId + '_' + index)
+        .layoutWeight(1)
+        .height(88)
+        .margin({ left: 10 })
+        .alignItems(HorizontalAlign.Start)
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
+      .onClick(() => {
+        router.pushUrl({
+          url: 'pages/ProductDetailPage',
+          params: { productId: item.productId }
+        });
+      })
+    }, (item: OrderItem, index: number) => item.itemId + '_' + index)
 
       Divider().color('#EEE').margin({ top: 8, bottom: 8 })
 
@@ -560,6 +587,15 @@ struct OrderDetailPage {
                 .width(120)
                 .margin({ right: 12 })
                 .onClick(() => this.cancelOrder())
+
+              Button('立即付款')
+                .fontSize(14)
+                .fontColor(Color.White)
+                .backgroundColor('#FF4D4F')
+                .borderRadius(22)
+                .height(40)
+                .width(160)
+                .onClick(() => this.goToPayment())
             }
 
             if (this.order.status === OrderStatus.PENDING_SHIPMENT) {
@@ -574,8 +610,28 @@ struct OrderDetailPage {
                 .onClick(() => this.shipOrder())
             }
 
-            if (this.order.status !== OrderStatus.PENDING_PAYMENT &&
-              this.order.status !== OrderStatus.PENDING_SHIPMENT) {
+            if (this.order.status === OrderStatus.PENDING_RECEIPT) {
+              Button('确认收货')
+                .fontSize(14)
+                .fontColor(Color.White)
+                .backgroundColor('#FF4D4F')
+                .borderRadius(22)
+                .height(40)
+                .width(160)
+                .onClick(() => this.confirmReceipt())
+            }
+
+            if (this.order.status === OrderStatus.COMPLETED) {
+              Button('去评价')
+                .fontSize(14)
+                .fontColor(Color.White)
+                .backgroundColor('#FF4D4F')
+                .borderRadius(22)
+                .height(40)
+                .width(120)
+                .margin({ right: 12 })
+                .onClick(() => this.goToReview())
+
               Button('删除订单')
                 .fontSize(14)
                 .fontColor('#999')
@@ -583,33 +639,25 @@ struct OrderDetailPage {
                 .borderRadius(22)
                 .height(40)
                 .width(120)
-                .margin({ right: 12 })
                 .onClick(() => this.deleteOrder())
             }
 
-            if (this.order.status !== OrderStatus.PENDING_SHIPMENT) {
-              Button(this.order.status === OrderStatus.PENDING_PAYMENT ? '立即付款' :
-                (this.order.status === OrderStatus.COMPLETED ? '去评价' : '确认收货'))
+            if (this.order.status === OrderStatus.CANCELLED ||
+              this.order.status === OrderStatus.EXPIRED) {
+              Button('删除订单')
                 .fontSize(14)
-                .backgroundColor('#FF4D4F')
-                .fontColor(Color.White)
+                .fontColor('#999')
+                .backgroundColor('#F5F5F5')
                 .borderRadius(22)
                 .height(40)
-                .width(160)
-                .onClick(() => {
-                  if (this.order!.status === OrderStatus.PENDING_PAYMENT) {
-                    this.goToPayment();
-                  } else if (this.order!.status === OrderStatus.COMPLETED) {
-                    this.goToReview();
-                  } else if (this.order!.status === OrderStatus.PENDING_RECEIPT) {
-                    this.confirmReceipt();
-                  }
-                })
+                .width(120)
+                .onClick(() => this.deleteOrder())
             }
           }
           .width('100%')
           .height(64)
           .justifyContent(FlexAlign.End)
+          .alignItems(VerticalAlign.Center)
           .padding({ right: 16 })
           .backgroundColor(Color.White)
         }

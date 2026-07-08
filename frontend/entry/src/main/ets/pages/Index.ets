@@ -1336,6 +1336,16 @@ struct UserTab {
             .onClick(() => {
               router.pushUrl({ url: 'pages/FavoritePage' });
             })
+            Row() {
+              Text('服务卡片').fontSize(15)
+              Text('>').fontSize(14).fontColor('#CCC')
+            }
+            .width('100%')
+            .justifyContent(FlexAlign.SpaceBetween)
+            .padding({ left: 16, right: 16, top: 14, bottom: 14 })
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/CardPreviewPage' });
+            })
           }
           .width('100%')
           .backgroundColor(Color.White)

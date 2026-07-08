@@ -1,0 +1,48 @@
+{
+  "forms": [
+    {
+      "name": "FrequentProductCard",
+      "description": "常用商品卡片（2x4），展示4个常购商品",
+      "src": "./ets/widget/pages/FrequentProductCard.ets",
+      "uiSyntax": "arkts",
+      "window": {
+        "designWidth": 720,
+        "autoDesignWidth": true
+      },
+      "colorMode": "auto",
+      "isDynamic": true,
+      "isDefault": true,
+      "updateEnabled": true,
+      "scheduledUpdateTime": "10:30",
+      "updateDuration": 1,
+      "defaultDimension": "2*4",
+      "supportDimensions": [
+        "2*4"
+      ],
+      "formConfigAbility": "ability://ServiceCardFormAbility",
+      "metadata": []
+    },
+    {
+      "name": "CartStatusCard",
+      "description": "购物车状态卡片（2x2），显示购物车数量和总金额",
+      "src": "./ets/widget/pages/CartStatusCard.ets",
+      "uiSyntax": "arkts",
+      "window": {
+        "designWidth": 720,
+        "autoDesignWidth": true
+      },
+      "colorMode": "auto",
+      "isDynamic": true,
+      "isDefault": false,
+      "updateEnabled": true,
+      "scheduledUpdateTime": "10:30",
+      "updateDuration": 1,
+      "defaultDimension": "2*2",
+      "supportDimensions": [
+        "2*2"
+      ],
+      "formConfigAbility": "ability://ServiceCardFormAbility",
+      "metadata": []
+    }
+  ]
+}

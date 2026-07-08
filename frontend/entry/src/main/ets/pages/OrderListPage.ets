@@ -19,6 +19,13 @@ interface OrderDetailPageParams {
   orderId: string;
 }
 
+interface ReviewPageParams {
+  productId: string;
+  productName: string;
+  orderId: string;
+  orderItemId: string;
+}
+
 @Entry
 @Component
 struct OrderListPage {
@@ -191,6 +198,24 @@ struct OrderListPage {
       await service.confirmReceipt(order.orderId);
     } catch (e) {
       order.status = originalStatus;
+    }
+  }
+
+  goToReview(order: Order): void {
+    if (order.items && order.items.length > 0) {
+      const firstItem = order.items[0];
+      const pageParams: ReviewPageParams = {
+        productId: firstItem.productId,
+        productName: firstItem.productName,
+        orderId: order.orderId,
+        orderItemId: firstItem.itemId
+      };
+      router.pushUrl({
+        url: 'pages/ReviewPage',
+        params: pageParams
+      }).catch(() => {
+        promptAction.showToast({ message: '页面跳转失败' });
+      });
     }
   }
 
@@ -438,7 +463,7 @@ struct OrderListPage {
             .padding({ left: 16, right: 16 })
             .margin({ right: 8 })
             .onClick(() => {
-              promptAction.showToast({ message: '评价功能开发中，感谢您的耐心等待' });
+              this.goToReview(order);
             })
         }
 
