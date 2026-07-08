@@ -20,6 +20,10 @@
     {
       "name": "location_permission_reason",
       "value": "用于获取附近商家和商品推荐"
+    },
+    {
+      "name": "form_desc",
+      "value": "鸿蒙商城服务卡片"
     }
   ]
 }

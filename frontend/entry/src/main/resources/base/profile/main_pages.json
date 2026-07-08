@@ -19,6 +19,8 @@
     "pages/OrderConfirmPage",
     "pages/OrderDetailPage",
     "pages/PaymentPage",
-    "pages/FavoritePage"
+    "pages/FavoritePage",
+    "pages/ReviewPage",
+    "pages/CardPreviewPage"
   ]
 }

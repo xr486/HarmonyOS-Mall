@@ -1,7 +1,9 @@
 import { HttpUtil, ApiResponse, LoginBody, PasswordLoginBody, SendCodeBody, RegisterBody, LoginResult } from '../../common/utils/http/HttpUtil';
 import { Logger } from '../../common/utils/logger/Logger';
 import { StorageUtil } from '../../common/utils/storage/StorageUtil';
+import { TokenFileUtil } from '../../common/utils/storage/TokenFileUtil';
 import { StorageKeys } from '../../common/constants/StorageKeys';
+import common from '@ohos.app.ability.common';
 
 const TAG = 'AuthManager';
 
@@ -125,6 +127,14 @@ export class AuthManager {
     await storage.remove(StorageKeys.USER_TOKEN);
     await storage.remove(StorageKeys.USER_PHONE);
     await storage.setBoolean(StorageKeys.IS_LOGGED_IN, false);
+    try {
+      const ctx: common.Context | undefined = AppStorage.get<common.Context>('abilityContext') as common.Context | undefined;
+      if (ctx) {
+        TokenFileUtil.clearToken(ctx);
+      }
+    } catch (e) {
+      // ignore
+    }
     Logger.info(TAG, 'signOut success');
   }
 
@@ -149,5 +159,14 @@ export class AuthManager {
     await storage.setString(StorageKeys.USER_TOKEN, data.token);
     await storage.setString(StorageKeys.USER_PHONE, data.phone);
     await storage.setBoolean(StorageKeys.IS_LOGGED_IN, true);
+    // 同步到跨进程文件，供 ServiceCardFormAbility 读取
+    try {
+      const ctx: common.Context | undefined = AppStorage.get<common.Context>('abilityContext') as common.Context | undefined;
+      if (ctx) {
+        TokenFileUtil.saveToken(ctx, data.token);
+      }
+    } catch (e) {
+      // ignore
+    }
   }
 }

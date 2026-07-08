@@ -32,6 +32,12 @@ public class Review {
     @Column(name = "images", columnDefinition = "TEXT")
     private String images;
 
+    @Column(name = "order_id")
+    private String orderId;
+
+    @Column(name = "order_item_id")
+    private String orderItemId;
+
     @Column(name = "created_at", nullable = false)
     private Long createdAt;
 }
